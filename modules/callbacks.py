@@ -120,12 +120,12 @@ def add_game_exe(game: Game, callback: typing.Callable = None):
             start_dir /= clean_dir
         else:
             try:
-            ratio = lambda a, b: difflib.SequenceMatcher(None, a.lower(), b.lower()).quick_ratio()
-            dirs = [node for node in os.listdir(start_dir) if os.path.isdir(start_dir / node)]
-            similarity = {d: ratio(d, game.name) for d in dirs}
-            best_match = max(similarity, key=similarity.get)
-            if similarity[best_match] > 0.85:
-                start_dir /= best_match
+                ratio = lambda a, b: difflib.SequenceMatcher(None, a.lower(), b.lower()).quick_ratio()
+                dirs = [node for node in os.listdir(start_dir) if os.path.isdir(start_dir / node)]
+                similarity = {d: ratio(d, game.name) for d in dirs}
+                best_match = max(similarity, key=similarity.get)
+                if similarity[best_match] > 0.85:
+                    start_dir /= best_match
             except Exception:
                 pass
     utils.push_popup(filepicker.FilePicker(
