@@ -207,6 +207,8 @@ async def connect():
             "style_bg":                    f'TEXT    DEFAULT "{DefaultStyle.bg}"',
             "style_border":                f'TEXT    DEFAULT "{DefaultStyle.border}"',
             "style_corner_radius":         f'INTEGER DEFAULT {DefaultStyle.corner_radius}',
+# FaceCrap: FilePicker Highlight
+            "style_filepicker_highlight":  f'TEXT    DEFAULT "{DefaultStyle.filepicker_highlight}"',
             "style_text":                  f'TEXT    DEFAULT "{DefaultStyle.text}"',
             "style_text_dim":              f'TEXT    DEFAULT "{DefaultStyle.text_dim}"',
             "tags_highlights":             f'TEXT    DEFAULT "{{}}"',

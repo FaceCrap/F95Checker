@@ -111,18 +111,21 @@ def add_game_exe(game: Game, callback: typing.Callable = None):
     start_dir = globals.settings.default_exe_dir.get(globals.os)
     if start_dir:
         start_dir = pathlib.Path(start_dir)
-        clean_dir = "".join(char for char in game.name.replace("&", "and") if char in (string.ascii_letters + string.digits + " "))
+# FaceCrap: Add " -_'()" as allowed characters, replace " " with "-" and "A-..." with "A_"
+        clean_dir = "".join(char for char in game.name.replace("&", "and").replace(" ", "-") if char in (string.ascii_letters + string.digits + " -_'()"))
+        if clean_dir.startswith("A-"):
+            clean_dir = clean_dir.replace("A-", "A_")
         clean_dir = re.sub(r" +", r" ", clean_dir).strip()
         if (start_dir / clean_dir).is_dir():
             start_dir /= clean_dir
         else:
             try:
-                ratio = lambda a, b: difflib.SequenceMatcher(None, a.lower(), b.lower()).quick_ratio()
-                dirs = [node for node in os.listdir(start_dir) if os.path.isdir(start_dir / node)]
-                similarity = {d: ratio(d, game.name) for d in dirs}
-                best_match = max(similarity, key=similarity.get)
-                if similarity[best_match] > 0.85:
-                    start_dir /= best_match
+            ratio = lambda a, b: difflib.SequenceMatcher(None, a.lower(), b.lower()).quick_ratio()
+            dirs = [node for node in os.listdir(start_dir) if os.path.isdir(start_dir / node)]
+            similarity = {d: ratio(d, game.name) for d in dirs}
+            best_match = max(similarity, key=similarity.get)
+            if similarity[best_match] > 0.85:
+                start_dir /= best_match
             except Exception:
                 pass
     utils.push_popup(filepicker.FilePicker(
@@ -446,7 +449,8 @@ def copy_masked_link(masked_url: str):
 
 
 def convert_f95zone_to_custom(game: Game):
-    async_thread.wait(db.update_game_id(game, utils.custom_id()))
+# FaceCrap: Keep F95 Thread ID if converted to Custom Game
+#    async_thread.wait(db.update_game_id(game, utils.custom_id()))
     game.custom = True
     game.downloads = ()
 

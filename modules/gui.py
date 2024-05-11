@@ -177,13 +177,15 @@ class Columns:
             sortable=True,
         )
         self.last_updated = self.Column(
-            self, f"{icons.update} Last Updated",
+# FaceCrap: Shorten column header
+            self, f"{icons.update} Updated",
             default=True,
             sortable=True,
             resizable=False,
         )
         self.last_played = self.Column(
-            self, f"{icons.play} Last Played",
+# FaceCrap: Shorten column header
+            self, f"{icons.play} Played",
             sortable=True,
             resizable=False,
         )
@@ -658,7 +660,8 @@ class MainGUI():
         imgui.io.font_global_scale = 1 / font_scaling_factor
         karlar_path = str(next(globals.self_path.glob("resources/fonts/Karla-Regular.*.ttf")))
         karlab_path = str(next(globals.self_path.glob("resources/fonts/Karla-Bold.*.ttf")))
-        meslo_path  = str(next(globals.self_path.glob("resources/fonts/MesloLGS-Regular.*.ttf")))
+# FaceCrap: Switch to version with Medium Line Gap
+        meslo_path  = str(next(globals.self_path.glob("resources/fonts/MesloLGM-Regular.*.ttf")))
         noto_path   = str(next(globals.self_path.glob("resources/fonts/NotoSans-Regular.*.ttf")))
         mdi_path    = str(icons.font_path)
         merge = dict(merge_mode=True)
@@ -678,6 +681,8 @@ class MainGUI():
         msgbox_range = imgui.core.GlyphRanges(msgbox_range_values)
         size_14 = round(self.scaled(14 * font_scaling_factor))
         size_15 = round(self.scaled(15 * font_scaling_factor))
+# FaceCrap: Added 17 for monospaced Date/Time columns
+        size_17 = round(self.scaled(17 * font_scaling_factor))
         size_18 = round(self.scaled(18 * font_scaling_factor))
         size_22 = round(self.scaled(22 * font_scaling_factor))
         size_28 = round(self.scaled(28 * font_scaling_factor))
@@ -704,6 +709,9 @@ class MainGUI():
         add_font(                mdi_path,    size_14, font_config=mdi_config,   glyph_ranges=mdi_range)
         # Monospace font for more info dropdowns
         fonts.mono    = add_font(meslo_path,  size_15, font_config=meslo_config, glyph_ranges=meslo_range)
+# FaceCrap: Monospaced date columns in listview and compact view timeline
+        fonts.dates   = add_font(meslo_path,  size_17, font_config=meslo_config, glyph_ranges=meslo_range)
+        fonts.events  = add_font(meslo_path,  size_18, font_config=meslo_config, glyph_ranges=meslo_range)
         # MsgBox type icons/thumbnails
         fonts.msgbox  = add_font(mdi_path,    size_69,                           glyph_ranges=msgbox_range)
         try:
@@ -1794,7 +1802,8 @@ class MainGUI():
             # Short timeline variant
             if globals.settings.compact_timeline:
                 imgui.push_style_color(imgui.COLOR_TEXT, *globals.settings.style_text_dim)
-                imgui.push_font(imgui.fonts.mono)
+# FaceCrap: Force monospaced font on date in compact view.
+                imgui.push_font(imgui.fonts.events)
                 imgui.text(date.strftime(short_format))
                 imgui.pop_style_color()
                 imgui.pop_font()
@@ -1997,7 +2006,8 @@ class MainGUI():
                 )
             else:
                 aspect_ratio = image.height / image.width
-                out_height = (min(avail.y, self.scaled(690)) * self.scaled(0.4)) or 1
+# FaceCrap: Changed self.scaled(0.4) to self.scaled(0.6)
+                out_height = (min(avail.y, self.scaled(690)) * self.scaled(0.6)) or 1
                 out_width = avail.x or 1
                 if aspect_ratio > (out_height / out_width):
                     height = out_height
@@ -2063,6 +2073,7 @@ class MainGUI():
                             game.set_image_sync(pathlib.Path(selected).read_bytes())
                     utils.push_popup(filepicker.FilePicker(
                         title=f"Select or drop image for {game.name}",
+                        picker_type=filepicker.PickerType.Media,
                         callback=select_callback
                     ).tick)
                 if imgui.selectable(f"{icons.trash_can_outline} Reset image", False)[0]:
@@ -2076,6 +2087,9 @@ class MainGUI():
             imgui.push_text_wrap_pos()
 
             imgui.push_font(imgui.fonts.big)
+# FaceCrap: Move type to same line as name
+            self.draw_type_widget(game.type, False, True)
+            imgui.same_line()
             self.draw_game_name_text(game)
             imgui.pop_font()
 
@@ -2096,59 +2110,94 @@ class MainGUI():
             imgui.same_line()
             self.draw_game_remove_button(game, f"{icons.trash_can_outline} Remove")
 
-            imgui.text_disabled("Version:")
-            imgui.same_line()
-            if game.updated:
-                self.draw_game_update_icon(game)
+# FaceCrap: Compact "More Info" layout
+            if imgui.begin_table("###MI_2Columns",
+                column=2,
+                flags=imgui.TABLE_NO_SAVED_SETTINGS
+            ):
+                imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text_disabled("Version:")
                 imgui.same_line()
-            if game.unknown_tags_flag:
-                self.draw_game_unknown_tags_icon(game)
+                if game.updated:
+                    self.draw_game_update_icon(game)
+                    imgui.same_line()
+                if game.unknown_tags_flag:
+                    self.draw_game_unknown_tags_icon(game)
+                    imgui.same_line()
+                offset = imgui.calc_text_size("Version:").x + imgui.style.item_spacing.x
+                utils.wrap_text(game.version, width=offset + imgui.get_content_region_available_width(), offset=offset)
+
+                imgui.table_next_column()
+                imgui.text_disabled("Developer:")
                 imgui.same_line()
-            offset = imgui.calc_text_size("Version:").x + imgui.style.item_spacing.x
-            utils.wrap_text(game.version, width=offset + imgui.get_content_region_available_width(), offset=offset)
+                offset = imgui.calc_text_size("Developer:").x + imgui.style.item_spacing.x
+                utils.wrap_text(game.developer or "Unknown", width=offset + imgui.get_content_region_available_width(), offset=offset)
+                imgui.end_table()
 
-            imgui.text_disabled("Developer:")
-            imgui.same_line()
-            offset = imgui.calc_text_size("Developer:").x + imgui.style.item_spacing.x
-            utils.wrap_text(game.developer or "Unknown", width=offset + imgui.get_content_region_available_width(), offset=offset)
+            if imgui.begin_table("###MI_3Columns",
+                column=3,
+                flags=imgui.TABLE_NO_SAVED_SETTINGS
+            ):
+                imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text_disabled("Status:")
+                imgui.same_line()
+                imgui.text(game.status.name)
+                imgui.same_line()
+                self.draw_status_widget(game.status)
 
-            imgui.text_disabled("Personal Rating:")
-            imgui.same_line()
-            self.draw_game_rating_widget(game)
+                imgui.table_next_column()
+                imgui.text_disabled("Forum Score:")
+                imgui.same_line()
+                imgui.text(f"{game.score:.1f}/5")
+                imgui.same_line()
+                imgui.text_disabled(f"({game.votes})")
 
-            imgui.text_disabled("Status:")
-            imgui.same_line()
-            imgui.text(game.status.name)
-            imgui.same_line()
-            self.draw_status_widget(game.status)
+                imgui.table_next_column()
+                imgui.text_disabled("Personal Rating:")
+                imgui.same_line()
+                self.draw_game_rating_widget(game)
 
-            imgui.text_disabled("Forum Score:")
-            imgui.same_line()
-            imgui.text(f"{game.score:.1f}/5")
-            imgui.same_line()
-            imgui.text_disabled(f"({game.votes})")
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text_disabled("Added On:")
+                imgui.same_line()
+                imgui.text(game.added_on.display)
 
-            imgui.text_disabled("Type:")
-            imgui.same_line()
-            self.draw_type_widget(game.type)
+                imgui.table_next_column()
+                imgui.text_disabled("Last Updated:")
+                imgui.same_line()
+                imgui.text(game.last_updated.display or "Unknown")
 
-            imgui.text_disabled("Last Updated:")
-            imgui.same_line()
-            imgui.text(game.last_updated.display or "Unknown")
+                imgui.table_next_column()
+                imgui.text_disabled("Last Played:")
+                imgui.same_line()
+                imgui.text(game.last_played.display or "Never")
+                if imgui.is_item_clicked():
+                    game.last_played = time.time()
+                if imgui.is_item_hovered():
+                    imgui.begin_tooltip()
+                    imgui.text("Click to set as played right now!")
+                    imgui.end_tooltip()
 
-            imgui.text_disabled("Last Played:")
-            imgui.same_line()
-            imgui.text(game.last_played.display or "Never")
-            if imgui.is_item_clicked():
-                game.last_played = time.time()
-            if imgui.is_item_hovered():
-                imgui.begin_tooltip()
-                imgui.text("Click to set as played right now!")
-                imgui.end_tooltip()
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text_disabled("Manage Exes:")
+                imgui.same_line()
+                self.draw_game_add_exe_button(game, f"{icons.folder_edit_outline} Add Exe")
 
-            imgui.text_disabled("Added On:")
-            imgui.same_line()
-            imgui.text(game.added_on.display)
+                imgui.table_next_column()
+                self.draw_game_clear_exes_button(game, f"{icons.folder_remove_outline} Clear Exes")
+
+                imgui.table_next_column()
+                self.draw_game_open_folder_button(game, f"{icons.folder_open_outline} Open Folder")
+                imgui.end_table()
 
             if len(game.executables) <= 1:
                 imgui.text_disabled("Executable:")
@@ -2169,14 +2218,6 @@ class MainGUI():
                         game.remove_executable(executable)
                     imgui.same_line()
                     imgui.text(executable)
-
-            imgui.text_disabled("Manage Exes:")
-            imgui.same_line()
-            self.draw_game_add_exe_button(game, f"{icons.folder_edit_outline} Add Exe")
-            imgui.same_line()
-            self.draw_game_clear_exes_button(game, f"{icons.folder_remove_outline} Clear Exes")
-            imgui.same_line()
-            self.draw_game_open_folder_button(game, f"{icons.folder_open_outline} Open Folder")
 
             imgui.spacing()
 
@@ -2203,8 +2244,8 @@ class MainGUI():
                     else:
                         imgui.text_disabled("Either this game doesn't have a description, or the thread is not formatted properly!")
                     imgui.end_tab_item()
-
-                if not game.custom and imgui.begin_tab_item(icons.tray_arrow_down + " Downloads###downloads")[0]:
+                if not game.custom and imgui.begin_tab_item((icons.tray_arrow_down
+                ) + " Downloads###downloads")[0]:
                     imgui.spacing()
                     imgui.text("RPDL Torrents:")
                     imgui.same_line()
@@ -2393,8 +2434,9 @@ class MainGUI():
                                 imgui.text(f"- {tag}")
                             imgui.tree_pop()
                     imgui.end_tab_item()
-
-                if imgui.begin_tab_item(icons.timeline_clock_outline + " Timeline###timeline")[0]:
+# FaceCrap: Hide TimeLine tab on custom games.
+                if not game.custom and imgui.begin_tab_item((icons.timeline_clock_outline
+                ) + " Timeline###timeline")[0]:
                     imgui.spacing()
                     self.draw_game_timeline_widget(game)
                     imgui.end_tab_item()
@@ -3173,12 +3215,19 @@ class MainGUI():
                                 imgui.text_disabled("  |  ".join(versions))
                         case cols.developer.index:
                             imgui.text(game.developer or "Unknown")
+# FaceCrap: Display dates in monospaced font
                         case cols.last_updated.index:
+                            imgui.push_font(imgui.fonts.dates)
                             imgui.text(game.last_updated.display or "Unknown")
+                            imgui.pop_font()
                         case cols.last_played.index:
+                            imgui.push_font(imgui.fonts.dates)
                             imgui.text(game.last_played.display or "Never")
+                            imgui.pop_font()
                         case cols.added_on.index:
+                            imgui.push_font(imgui.fonts.dates)
                             imgui.text(game.added_on.display)
+                            imgui.pop_font()
                         case cols.finished.index:
                             self.draw_game_finished_checkbox(game)
                         case cols.installed.index:
@@ -3199,9 +3248,12 @@ class MainGUI():
                             self.draw_status_widget(game.status)
                         case cols.score.index:
                             with imgui.begin_group():
+# FaceCrap: Force monospaced font
+                                imgui.push_font(imgui.fonts.dates)
                                 imgui.text(f"{game.score:.1f}")
                                 imgui.same_line()
                                 imgui.text_disabled(f"({game.votes})")
+                                imgui.pop_font()
                             if imgui.is_item_hovered():
                                 with imgui.begin_tooltip():
                                     imgui.text(f"{utils.bayesian_average(game.score, game.votes):.2f}")
@@ -3625,20 +3677,29 @@ class MainGUI():
 
     def draw_bottombar(self):
         new_display_mode = None
+# FaceCrap: replacement for direct reference
+        old_display_mode = globals.settings.display_mode
 
+# FaceCrap: replace all direct references to globals.settings.display_mode
         for display_mode in DisplayMode:
-            if globals.settings.display_mode is display_mode:
+            if old_display_mode is display_mode:
                 imgui.push_style_color(imgui.COLOR_BUTTON, *imgui.style.colors[imgui.COLOR_BUTTON_HOVERED])
             if imgui.button(getattr(icons, display_mode.icon)):
                 new_display_mode = display_mode
                 self.switched_display_mode = True
-            if globals.settings.display_mode is display_mode:
+            if old_display_mode is display_mode:
                 imgui.pop_style_color()
             imgui.same_line()
 
         if new_display_mode is not None:
             globals.settings.display_mode = new_display_mode
             async_thread.run(db.update_settings("display_mode"))
+
+# FaceCrap: Set scroll multiplier to 3 in grids
+            globals.settings.scroll_amount = 1.0
+            if new_display_mode != 1:
+                globals.settings.scroll_amount = 3.0
+            async_thread.run(db.update_settings("scroll_amount"))
 
         if self.add_box_valid:
             imgui.set_next_item_width(-(imgui.calc_text_size("Add!").x + 2 * imgui.style.frame_padding.x) - imgui.style.item_spacing.x)
@@ -3839,7 +3900,7 @@ class MainGUI():
                 text_size = imgui.calc_text_size(text)
                 text_x = screen_pos.x + (width - text_size.x) / 2
                 text_y = screen_pos.y - text_size.y - 3 * imgui.style.item_spacing.y
-                draw_list.add_text(text_x, text_y, col, text)
+                draw_list.add_text(text_x, text_y, col, text)           
             if imgui.begin_popup_context_item("###refresh_context"):
                 # Right click = more options context menu
                 if imgui.selectable(f"{icons.bell_badge_outline} Check notifs", False)[0]:
@@ -4073,6 +4134,7 @@ class MainGUI():
                                     async_thread.run(db.update_settings("browser_custom_executable"))
                             utils.push_popup(filepicker.FilePicker(
                                 title="Select or drop browser executable",
+                                picker_type=filepicker.PickerType.Execs,
                                 start_dir=set.browser_custom_executable,
                                 callback=callback
                             ).tick)
@@ -4463,6 +4525,7 @@ class MainGUI():
                     buttons={
                         f"{icons.check} Ok": lambda: utils.push_popup(filepicker.FilePicker(
                                                          title="Select or drop bookmark file",
+                                                         picker_type=filepicker.PickerType.Bookmarks,
                                                          callback=callback
                                                      ).tick),
                         f"{icons.cancel} Cancel": None
@@ -4779,15 +4842,19 @@ class MainGUI():
             draw_settings_label("Text dim:")
             draw_settings_color("style_text_dim")
 
+            draw_settings_label("Filepicker highlight:")
+            draw_settings_color("style_filepicker_highlight")
+
             draw_settings_label("Defaults:")
             if imgui.button("Restore", width=right_width):
-                set.style_corner_radius = DefaultStyle.corner_radius
-                set.style_accent        = colors.hex_to_rgba_0_1(DefaultStyle.accent)
-                set.style_alt_bg        = colors.hex_to_rgba_0_1(DefaultStyle.alt_bg)
-                set.style_bg            = colors.hex_to_rgba_0_1(DefaultStyle.bg)
-                set.style_border        = colors.hex_to_rgba_0_1(DefaultStyle.border)
-                set.style_text          = colors.hex_to_rgba_0_1(DefaultStyle.text)
-                set.style_text_dim      = colors.hex_to_rgba_0_1(DefaultStyle.text_dim)
+                set.style_corner_radius        = DefaultStyle.corner_radius
+                set.style_accent               = colors.hex_to_rgba_0_1(DefaultStyle.accent)
+                set.style_alt_bg               = colors.hex_to_rgba_0_1(DefaultStyle.alt_bg)
+                set.style_bg                   = colors.hex_to_rgba_0_1(DefaultStyle.bg)
+                set.style_border               = colors.hex_to_rgba_0_1(DefaultStyle.border)
+                set.style_text                 = colors.hex_to_rgba_0_1(DefaultStyle.text)
+                set.style_text_dim             = colors.hex_to_rgba_0_1(DefaultStyle.text_dim)
+                set.style_filepicker_highlight = colors.hex_to_rgba_0_1(DefaultStyle.filepicker_highlight)
                 self.refresh_styles()
                 async_thread.run(db.update_settings(
                     "style_corner_radius",
@@ -4797,6 +4864,7 @@ class MainGUI():
                     "style_border",
                     "style_text",
                     "style_text_dim",
+                    "style_filepicker_highlight",
                 ))
 
             imgui.end_table()

@@ -189,13 +189,15 @@ class Datestamp(Timestamp):
 
 
 class DefaultStyle:
-    accent        = "#d4202e"
-    alt_bg        = "#101010"
-    bg            = "#0a0a0a"
-    border        = "#454545"
-    corner_radius = 6
-    text          = "#ffffff"
-    text_dim      = "#808080"
+    accent               = "#d4202e"
+    alt_bg               = "#101010"
+    bg                   = "#0a0a0a"
+    border               = "#454545"
+    corner_radius        = 6
+    text                 = "#ffffff"
+    text_dim             = "#808080"
+# FaceCrap: FilePicker Highlight
+    filepicker_highlight = "#80FF00"
 
 
 @dataclasses.dataclass(slots=True)
@@ -742,6 +744,8 @@ class Settings:
     style_bg                    : tuple[float]
     style_border                : tuple[float]
     style_corner_radius         : int
+# FaceCrap: FilePicker Highlight
+    style_filepicker_highlight  : tuple[float]
     style_text                  : tuple[float]
     style_text_dim              : tuple[float]
     tags_highlights             : dict[Tag, TagHighlight]

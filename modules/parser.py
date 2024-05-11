@@ -173,8 +173,8 @@ def thread(game_id: int, res: bytes, pipe: multiprocessing.Queue = None):
             if not is_class("labelLink")(elem) and not is_class("label-append")(elem):
                 name += elem.text
         name = fixed_spaces(sanitize_whitespace(re.search(r"^\s*(.*?)(?:\s*\[.*?\]\s*)*$", name).group(1)))
-
-        thread_version = get_game_attr("version", "game version", "mod version")
+# FaceCrap: Add "tool version" to also check Tool threads for version info.
+        thread_version = get_game_attr("version", "game version", "mod version", "tool version")
         if not thread_version:
             if match := re.search(r"(?:\[.+?\] - )*.+?\[(.+?)\]", html.title.text):
                 thread_version = fixed_spaces(sanitize_whitespace(match.group(1)))
