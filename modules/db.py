@@ -394,11 +394,11 @@ async def load_games(id: int = None):
 
 
 async def load():
-# FaceCrap: Sort by name
+# FaceCrap: Sort case insensitive by name, use lower() because NOCASE don't work with SQLite
     cursor = await connection.execute("""
         SELECT *
         FROM labels
-        ORDER BY name
+        ORDER BY lower(name)
     """)
     for label in await cursor.fetchall():
         Label.add(row_to_cls(label, Label))
