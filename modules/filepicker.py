@@ -30,6 +30,7 @@ class PickerType(Enum):
 
 class ListItem:
     def __init__(self, path: pathlib.Path, picker_type: PickerType | None):
+        self,
         self.path = path
         self.name = path.name
         self.ptype = picker_type
@@ -60,7 +61,7 @@ class ListItem:
         return isinstance(other, self.__class__) and self.name == other.name
 
 class FilePicker:
-    flags = (
+    default_flags = (
         imgui.WINDOW_NO_MOVE |
         imgui.WINDOW_NO_RESIZE |
         imgui.WINDOW_NO_COLLAPSE |
@@ -90,7 +91,7 @@ class FilePicker:
         self.dir: pathlib.Path = None
         self.error: str | None = None
         self.picker_type = picker_type
-        self.flags = custom_popup_flags or self.flags
+        self.flags = custom_popup_flags or self.default_flags
         self.windows = sys.platform.startswith("win")
         self.dir_picker = picker_type == PickerType.Dirs
         if self.windows:

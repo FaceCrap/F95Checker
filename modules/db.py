@@ -394,9 +394,11 @@ async def load_games(id: int = None):
 
 
 async def load():
+# FaceCrap: Sort by name
     cursor = await connection.execute("""
         SELECT *
         FROM labels
+        ORDER BY name
     """)
     for label in await cursor.fetchall():
         Label.add(row_to_cls(label, Label))
