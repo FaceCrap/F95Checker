@@ -4447,7 +4447,7 @@ class MainGUI():
                 imgui.table_next_row()
                 imgui.table_next_column()
                 imgui.set_next_item_width(imgui.get_content_region_available_width() + buttons_offset + imgui.style.cell_padding.x)
-                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name)
+                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
                 setter_extra = lambda _=None: async_thread.run(db.update_label(label, "name"))
                 if changed:
                     label.name = value
@@ -4471,8 +4471,16 @@ class MainGUI():
                     async_thread.run(db.delete_label(label))
 
             draw_settings_label("New label:")
+# FaceCrap: Add warrning if max allowed labels is reached (due to IMGUI_TABLE_MAX_COLUMNS limit)
             if imgui.button("Add", width=right_width):
-                async_thread.run(db.create_label())
+                if len(Label.instances) == 63: 
+                    utils.push_popup(
+                        msgbox.msgbox, "Alert!",
+                        "You have reached the maximum number (63) of labels.",
+                        MsgBox.warn
+                    )
+                else:
+                    async_thread.run(db.create_label())
 
             imgui.end_table()
             imgui.spacing()
