@@ -9,6 +9,7 @@ import itertools
 import pathlib
 import pickle
 import platform
+import random
 import shutil
 import sys
 import threading
@@ -317,6 +318,7 @@ class MainGUI():
         self.add_box_text = ""
         self.new_styles = False
         self.prev_size = (0, 0)
+        self.render_state = None
         self.screen_pos = (0, 0)
         self.repeat_chars = False
         self.scroll_percent = 0.0
@@ -332,6 +334,8 @@ class MainGUI():
         self.filters: list[Filter] = []
         self.poll_chars: list[int] = []
         self.refresh_ratio_smooth = 0.0
+        self.slideshow_image_index = -1
+        self.slideshow_show_next = False
         self.bg_mode_timer: float = None
         self.input_chars: list[int] = []
         self.switched_display_mode = False
@@ -340,6 +344,7 @@ class MainGUI():
         self.prev_filters: list[Filter] = []
         self.ghost_columns_enabled_count = 0
         self.bg_mode_notifs_timer: float = None
+        self.slideshow_prev_interval: float = 0.0
         self.show_games_ids: dict[Tab, list[int]] = {}
 
         # Setup Qt objects
@@ -395,6 +400,8 @@ class MainGUI():
             sys.exit(1)
         glfw.make_context_current(self.window)
         self.impl = GlfwRenderer(self.window)
+
+        self.render_state = globals.settings.render_when_unfocused
 
         # Window position and icon
         if all(type(x) is int for x in pos) and len(pos) == 2 and utils.validate_geometry(*pos, *size):
@@ -886,6 +893,15 @@ class MainGUI():
                             scroll_energy = 0.0
                         imgui.io.mouse_wheel = scroll_now
 
+                    # fuck me I can't find the logic to make it only draw 
+                    # when the next image should be drawn in the slideshow
+                    # it's either allways on or allways off.
+                    if globals.settings.slideshow:
+                            mouse_pos = (1, 1)
+                            win_hovered = True
+                            prev_win_hovered = True
+                            self.slideshow_show_next = True
+                            
                     # Redraw only when needed
                     draw = False
                     draw = draw or api.updating
@@ -3094,6 +3110,63 @@ class MainGUI():
         tab_id = self.current_tab.id if self.current_tab else -1
         return f"###game_list{tab_id if globals.settings.independent_tab_views else ''}"
 
+    def draw_slideshow_image(self, id: int):
+        size = imgui.io.display_size
+        game = globals.games[id]
+        image = game.image
+        win_flags = self.window_flags#| imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOUSE_INPUTS
+        slideshow_id = "###slideshow_window"
+        imgui.open_popup(slideshow_id)
+        imgui.set_next_window_size(size.x, size.y)
+        fg_draw_list = imgui.get_foreground_draw_list()
+        with imgui.begin_popup(slideshow_id, flags=win_flags):
+            aspect_ratio = image.height / image.width
+            if aspect_ratio > size.y / size.x:
+                height = size.y
+                width = height / aspect_ratio
+            else:
+                width = size.x
+                height = width * aspect_ratio
+            x1 = (size.x - width) / 2
+            y1 = (size.y - height) / 2
+            x2 = x1 + width
+            y2 = y1 + height
+            fg_draw_list.add_image(image.texture_id, (x1, y1), (x2, y2))
+            self.slideshow_show_next = False
+
+    def draw_slideshow(self):
+        if not globals.settings.render_when_unfocused:
+            globals.settings.render_when_unfocused = True
+            async_thread.run(db.update_settings("render_when_unfocused"))
+        if globals.settings.slideshow_all_tabs:        
+            self.slideshow_images = [game.id for game in globals.games.values()]
+        else:
+            self.slideshow_images = self.show_games_ids[self.current_tab]
+        self.slideshow_image_count = len(self.slideshow_images) - 1
+        self.slideshow_image_index = min(self.slideshow_image_index, self.slideshow_image_count)
+        time_now_ms = imgui.get_time() * 1000
+#        if self.slideshow_show_next and (self.slideshow_prev_interval == 0.0 or (time_now_ms - self.slideshow_prev_interval) > globals.settings.slideshow_interval):
+        if (self.slideshow_prev_interval == 0.0 or (time_now_ms - self.slideshow_prev_interval) > globals.settings.slideshow_interval):
+            self.slideshow_prev_interval = time_now_ms
+            if globals.settings.slideshow_random_order:
+                random_index = random.randint(0, self.slideshow_image_count)
+                while random_index == self.slideshow_image_index:
+                    random_index = random.randint(0, self.slideshow_image_count)
+                self.slideshow_image_index = random_index
+            else:
+                if self.slideshow_image_index < self.slideshow_image_count:
+                    self.slideshow_image_index += 1
+                else:
+                    self.slideshow_image_index = -1
+            self.draw_slideshow_image(self.slideshow_images[self.slideshow_image_index])
+        if imgui.is_key_pressed(glfw.KEY_ESCAPE):
+            globals.settings.slideshow = False
+            async_thread.run(db.update_settings("slideshow"))
+            self.slideshow_prev_interval = 0.0
+            # restore render_when_unfocused
+            globals.settings.render_when_unfocused = self.render_state
+            async_thread.run(db.update_settings("render_when_unfocused"))
+
     def draw_games_list(self):
         # Hack: custom toggles in table header right click menu by adding tiny empty "ghost" columns and hiding them
         # by starting the table render before the content region.
@@ -3252,6 +3325,9 @@ class MainGUI():
                 self.handle_game_hitbox_events(game, drag_drop=True)
 
             imgui.end_table()
+
+            if globals.settings.slideshow:
+                self.draw_slideshow()
 
     def tick_list_columns(self):
         # Hack: get sort and column specs for list mode in grid and kanban mode
@@ -3574,6 +3650,10 @@ class MainGUI():
                 self.draw_game_cell(game, True, draw_list, cell_width, expand, img_height, cell_config)
 
             imgui.end_table()
+
+            if globals.settings.slideshow:
+                self.draw_slideshow()
+
         imgui.pop_style_var()
 
     def draw_games_kanban(self):
@@ -3648,6 +3728,10 @@ class MainGUI():
                 imgui.end_child()
 
             imgui.end_table()
+
+            if globals.settings.slideshow:
+                self.draw_slideshow()
+
         imgui.pop_style_var()
 
     def draw_bottombar(self):
@@ -3773,6 +3857,8 @@ class MainGUI():
             if changed:
                 setattr(set, setting, value)
                 async_thread.run(db.update_settings(setting))
+                if setting == "render_when_unfocused":
+                    self.render_state = value
             return changed
 
         def draw_settings_color(setting: str):
@@ -4260,6 +4346,33 @@ class MainGUI():
 
             if not set.zoom_enabled:
                 imgui.pop_disabled()
+
+            draw_settings_label(
+                "Enable slideshow:",
+                "Creates a slideshow in-window of game banners in the current tab. Press ESC to stop.\nPlease be aware that this will use a fair amount of CPU cyles."
+            )
+            draw_settings_checkbox("slideshow")
+
+            draw_settings_label(
+                "Cycle through all tabs:",
+                "If checked the slideshow will cycle through all game banners,\nif unchecked only game banners in the current tab will be shown."
+            )
+            draw_settings_checkbox("slideshow_all_tabs")
+
+            draw_settings_label(
+                "Cycle in random order:",
+                "If checked game banners will be selected randomly,\nif unchecked game banners will be selected in one of two ways:\n- if cycling through only the active tab: in sort order.\n- if cycling through all tabs: in game id order"
+            )
+            draw_settings_checkbox("slideshow_random_order")
+
+            draw_settings_label(
+                "Interval:",
+                "Delay in ms before showing the next game banner.\nAllowed range is from 1000-600000 ms (1 second to 10 minutes).\nDefault is 5000 ms (5 seconds)."
+            )
+            changed, value = imgui.drag_int("###slideshow_interval", set.slideshow_interval, 1.0, 1000, 600000, "%d ms")
+            set.slideshow_interval = min(max(value, 1000), 600000)
+            if changed:
+                async_thread.run(db.update_settings("slideshow_interval"))
 
             imgui.end_table()
             imgui.spacing()

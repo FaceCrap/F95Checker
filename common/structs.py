@@ -753,6 +753,10 @@ class Settings:
     scroll_smooth_speed         : float
     select_executable_after_add : bool
     show_remove_btn             : bool
+    slideshow                   : bool
+    slideshow_all_tabs          : bool
+    slideshow_interval          : int
+    slideshow_random_order      : bool
     software_webview            : bool
     start_in_background         : bool
     start_refresh               : bool
