@@ -81,8 +81,7 @@ f95_ratelimit_messages = (
     b"<title>Error 429</title>",
 )
 
-api_domain = "api.f95checker.dev"
-api_host = "https://" + api_domain
+api_host = os.environ.get("F95INDEXER_URL") or "https://api.f95checker.dev"
 api_fast_check_url = api_host + "/fast?ids={ids}"
 api_full_check_url = api_host + "/full/{id}?ts={ts}"
 api_fast_check_max_ids = 10
@@ -498,8 +497,11 @@ def cleanup_temp_files():
 
 
 async def thread_search(category: str, search: str, query: str, sort="likes", count=15, page=1):
-    for char in "':-":
+    query = query.encode("ascii", errors="replace").decode()
+    query = re.sub(r"\.+ ", " ", query)
+    for char in "?&/':;-.":
         query = query.replace(char, " ")
+    query = re.sub(r"\s+", " ", query).strip()[:28]
     res = await fetch("GET", f95_latest_endpoint.format(
         cmd="list",
         cat=category,
@@ -584,14 +586,16 @@ def open_search_popup(query: str):
             if clicked:
                 async_thread.run(callbacks.add_games(result))
     async def _f95zone_run_search():
-        nonlocal results
+        nonlocal results, ran_query, ran_category, ran_search
         results = None
         ran_query = query
-        ran_category = categories[category].lower()
-        ran_search = searches[search].lower()
-        if ran_search == "title":
-            ran_search = "search"
-        results = await thread_search(ran_category, ran_search, ran_query)
+        ran_category = category
+        real_category = categories[ran_category].lower()
+        ran_search = search
+        real_search = searches[ran_search].lower()
+        if real_search == "title":
+            real_search = "search"
+        results = await thread_search(real_category, real_search, ran_query)
     utils.push_popup(
         utils.popup, "F95zone thread search",
         _f95zone_search_popup,
@@ -1022,6 +1026,9 @@ async def check_notifs(standalone=True, retry=False):
             more=error.traceback()
         )
     globals.refresh_progress += 1
+    for popup in globals.popup_stack:
+        if popup.func is msgbox.msgbox and popup.args[0] == "Notifications":
+            globals.popup_stack.remove(popup)
     if alerts != 0 and inbox != 0:
         msg = (
             f"You have {alerts + inbox} unread notifications.\n"
@@ -1042,9 +1049,6 @@ async def check_notifs(standalone=True, retry=False):
         f"{icons.check} Yes": open_callback,
         f"{icons.cancel} No": None
     }
-    for popup in globals.popup_stack:
-        if popup.func is msgbox.msgbox and popup.args[0] == "Notifications":
-            globals.popup_stack.remove(popup)
     utils.push_popup(
         msgbox.msgbox, "Notifications",
         msg +
