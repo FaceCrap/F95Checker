@@ -753,6 +753,10 @@ class Settings:
     scroll_smooth_speed         : float
     select_executable_after_add : bool
     show_remove_btn             : bool
+    slideshow                   : bool
+    slideshow_all_tabs          : bool
+    slideshow_interval          : int
+    slideshow_random_order      : bool
     software_webview            : bool
     start_in_background         : bool
     start_refresh               : bool
@@ -844,7 +848,6 @@ class Game:
     tab                : Tab.get
     notes              : str
     image_url          : str
-    previews_urls      : list[str]
     downloads          : tuple[tuple[str, list[tuple[str, str]]]]
     selected           : bool = False
     image              : "imagehelper.ImageHelper" = None
@@ -1021,7 +1024,6 @@ class Game:
             "tab",
             "notes",
             "image_url",
-            "previews_urls",
             "downloads"
         ]:
             if isinstance(attr := getattr(self, name), Timestamp):

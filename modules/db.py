@@ -222,6 +222,10 @@ async def connect():
             "scroll_smooth_speed":         f'REAL    DEFAULT 8.0',
             "select_executable_after_add": f'INTEGER DEFAULT {int(False)}',
             "show_remove_btn":             f'INTEGER DEFAULT {int(False)}',
+            "slideshow":                   f'INTEGER DEFAULT {int(False)}',
+            "slideshow_all_tabs":          f'INTEGER DEFAULT {int(False)}',
+            "slideshow_interval":          f'INTEGER DEFAULT 5000',
+            "slideshow_random_order":      f'INTEGER DEFAULT {int(False)}',
             "software_webview":            f'INTEGER DEFAULT {int(False)}',
             "start_in_background":         f'INTEGER DEFAULT {int(False)}',
             "start_refresh":               f'INTEGER DEFAULT {int(False)}',
@@ -290,7 +294,6 @@ async def connect():
             "tab":                         f'INTEGER DEFAULT NULL',
             "notes":                       f'TEXT    DEFAULT ""',
             "image_url":                   f'TEXT    DEFAULT ""',
-            "previews_urls":               f'TEXT    DEFAULT "[]"',
             "downloads":                   f'TEXT    DEFAULT "[]"',
         },
         renames=[
