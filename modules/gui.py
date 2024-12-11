@@ -901,7 +901,7 @@ class MainGUI():
                             win_hovered = True
                             prev_win_hovered = True
                             self.slideshow_show_next = True
-                            
+
                     # Redraw only when needed
                     draw = False
                     draw = draw or api.updating
@@ -3111,31 +3111,52 @@ class MainGUI():
         return f"###game_list{tab_id if globals.settings.independent_tab_views else ''}"
 
     def draw_slideshow_image(self, id: int):
-        size = imgui.io.display_size
         game = globals.games[id]
         image = game.image
-        win_flags = self.window_flags#| imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOUSE_INPUTS
         slideshow_id = "###slideshow_window"
+        # Need to only create and open the popup once and only close it when ESC
+        # but fuckme if I know how to prevent the end_child error from the list view
+        # the constant creating/closing the popup is using way too much CPU
+#        if not imgui.is_popup_open(slideshow_id):
+        size = imgui.io.display_size
+        # is this actually needed? Doesn't look like it.
+#        win_flags = self.window_flags# | imgui.WINDOW_NO_SAVED_SETTINGS | imgui.WINDOW_NO_MOUSE_INPUTS
+        win_flags = 0
         imgui.open_popup(slideshow_id)
         imgui.set_next_window_size(size.x, size.y)
+        imgui.push_style_color(imgui.COLOR_BORDER, *imgui.style.colors[imgui.COLOR_POPUP_BACKGROUND])
+        imgui.begin_popup(slideshow_id, flags=win_flags)
+        # indent should end here if the 'if' is uncommented, but... end_child error
+        aspect_ratio = image.height / image.width
+        if aspect_ratio > size.y / size.x:
+            height = size.y
+            width = height / aspect_ratio
+        else:
+            width = size.x
+            height = width * aspect_ratio
+        x1 = (size.x - width) / 2
+        y1 = (size.y - height) / 2
+        x2 = x1 + width
+        y2 = y1 + height
+#       if imagehelper.redraw or self.slideshow_show_next: # doesn't work, popup area stays black.
+        # if popup only gets created/opened once then the get_forground_draw_list 
+        # could hopefully be moved inside the 'if' test to prevent the black intermissions
         fg_draw_list = imgui.get_foreground_draw_list()
-        with imgui.begin_popup(slideshow_id, flags=win_flags):
-            aspect_ratio = image.height / image.width
-            if aspect_ratio > size.y / size.x:
-                height = size.y
-                width = height / aspect_ratio
-            else:
-                width = size.x
-                height = width * aspect_ratio
-            x1 = (size.x - width) / 2
-            y1 = (size.y - height) / 2
-            x2 = x1 + width
-            y2 = y1 + height
-            fg_draw_list.add_image(image.texture_id, (x1, y1), (x2, y2))
-            self.slideshow_show_next = False
-
+        fg_draw_list.add_image(image.texture_id, (x1, y1), (x2, y2))
+#            imagehelper.redraw = False # doesn't seem to be actually needed
+#            self.slideshow_show_next = False
+        imgui.pop_style_color()
+        # should be done when pressing ESC
+        imgui.end_popup()
+        
     def draw_slideshow(self):
+        # currently draw_slideshow only gets called from the list view
+        # need a better place to call it from then from within each of the views
+        # but if calling it from the sidebar, the checker dies a silent death
         if not globals.settings.render_when_unfocused:
+            # this needs a better way, if exiting checker during slideshow
+            # the state of this setting might not be what it used to be
+            # but it needs to be enabled so the slideshow also plays when unfocused
             globals.settings.render_when_unfocused = True
             async_thread.run(db.update_settings("render_when_unfocused"))
         if globals.settings.slideshow_all_tabs:        
@@ -3145,8 +3166,11 @@ class MainGUI():
         self.slideshow_image_count = len(self.slideshow_images) - 1
         self.slideshow_image_index = min(self.slideshow_image_index, self.slideshow_image_count)
         time_now_ms = imgui.get_time() * 1000
-#        if self.slideshow_show_next and (self.slideshow_prev_interval == 0.0 or (time_now_ms - self.slideshow_prev_interval) > globals.settings.slideshow_interval):
         if (self.slideshow_prev_interval == 0.0 or (time_now_ms - self.slideshow_prev_interval) > globals.settings.slideshow_interval):
+            # alternate way of trying to have the fdl only draw when interval expires
+            # but only gives black popup
+#            imagehelper.redraw = True # doesn't seem to be actually needed
+#            self.slideshow_show_next = True
             self.slideshow_prev_interval = time_now_ms
             if globals.settings.slideshow_random_order:
                 random_index = random.randint(0, self.slideshow_image_count)
@@ -3158,12 +3182,18 @@ class MainGUI():
                     self.slideshow_image_index += 1
                 else:
                     self.slideshow_image_index = -1
-            self.draw_slideshow_image(self.slideshow_images[self.slideshow_image_index])
+        # should actually only get called when the interval expires
+        # but how it is now, the popup would get closed right after and nothing shows
+        self.draw_slideshow_image(self.slideshow_images[self.slideshow_image_index])
         if imgui.is_key_pressed(glfw.KEY_ESCAPE):
+            # only terminate the popup if ESC pressed
+#            imgui.end_popup()
             globals.settings.slideshow = False
             async_thread.run(db.update_settings("slideshow"))
             self.slideshow_prev_interval = 0.0
-            # restore render_when_unfocused
+            # restore render_when_unfocused, but if checker is exited during slideshow
+            # the 'wrong' state existing when the slideshow plays gets restored instead
+            # unless this was actually turned on to begin with
             globals.settings.render_when_unfocused = self.render_state
             async_thread.run(db.update_settings("render_when_unfocused"))
 
