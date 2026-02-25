@@ -552,6 +552,7 @@ async def add_games(*threads: list[ThreadMatch | SearchResult]):
             await db.create_game(thread)
             await db.load_games(thread.id)
             game = globals.games[thread.id]
+            utils.start_refresh_task(api.refresh(*[game], full=True, notifs=False))
             added.append(game.name)
             if globals.settings.mark_installed_after_add:
                 game.installed = game.version
