@@ -2731,11 +2731,17 @@ class MainGUI():
                         if idx == -1:
                             idx = len(carousel_ids) - 1
                         change_id = carousel_ids[idx]
+                        # remove highlight from previous game and highlight the current game
+                        game.selected = False
+                        globals.games[change_id].selected = True
                     if imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True) or clicked_right:
                         idx += 1
                         if idx == len(carousel_ids):
                             idx = 0
                         change_id = carousel_ids[idx]
+                        # remove highlight from previous game and highlight the current game
+                        game.selected = False
+                        globals.games[change_id].selected = True
             if change_id is not None:
                 utils.push_popup(self.draw_game_info_popup, globals.games[change_id], carousel_ids).uuid = popup_uuid
                 return True
@@ -3210,6 +3216,8 @@ class MainGUI():
                         for game in globals.games.values():
                             game.selected = False
                     else:
+                        # Mark game as selected so highlight sticks below the popup
+                        game.selected = True
                         # Left click = open game info popup
                         utils.push_popup(self.draw_game_info_popup, game, self.show_games_ids[self.current_tab].copy())
         # Left click drag = swap if in manual sort mode
