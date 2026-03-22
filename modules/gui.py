@@ -3212,12 +3212,17 @@ class MainGUI():
                     # Ctrl + Left click = single select
                     game.selected = not game.selected
                 else:
-                    if any(game.selected for game in globals.games.values()):
+# FC: Use selected_games_count to check for selected games
+                    if self.selected_games_count > 1:
                         for game in globals.games.values():
                             game.selected = False
                     else:
-                        # Mark game as selected so highlight sticks below the popup
+# FC: If there's a single game selected then first deselect it
+                        if self.last_selected_game != None:
+                            self.last_selected_game.selected = False
+# FC: Mark the game clicked on as selected
                         game.selected = True
+                        self.last_selected_game = game
                         # Left click = open game info popup
                         utils.push_popup(self.draw_game_info_popup, game, self.show_games_ids[self.current_tab].copy())
         # Left click drag = swap if in manual sort mode
