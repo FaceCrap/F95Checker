@@ -229,6 +229,13 @@ async def connect():
             "scroll_smooth_speed":         f'REAL    DEFAULT 8.0',
             "select_executable_after_add": f'INTEGER DEFAULT {int(False)}',
             "show_remove_btn":             f'INTEGER DEFAULT {int(False)}',
+# FC: Slideshow settings
+            "slideshow_auto_play":         f'INTEGER DEFAULT {int(True)}',
+            "slideshow_random_order":      f'INTEGER DEFAULT {int(False)}',
+            "slideshow_tab_only":          f'INTEGER DEFAULT {int(False)}',
+            "slideshow_transition_dur":    f'REAL    DEFAULT 0.6',
+            "slideshow_interval":          f'INTEGER DEFAULT 10',
+            "slideshow_idle_seconds":      f'INTEGER DEFAULT 900',
             "software_webview":            f'INTEGER DEFAULT {int(False)}',
             "start_in_background":         f'INTEGER DEFAULT {int(False)}',
             "start_refresh":               f'INTEGER DEFAULT {int(False)}',

@@ -68,6 +68,7 @@ from modules import (
     msgbox,
     rpc_thread,
     rpdl,
+    slideshow,
     utils,
 )
 
@@ -864,6 +865,10 @@ class MainGUI():
                     self.repeat_chars = False
                 self.input_chars.clear()
                 glfw.poll_events()
+# FC: Slideshow
+                # to reduce flicker this must be right after glfw.poll_eevents
+                # to ensure both windows are serviced together in the one call
+                slideshow.tick(globals.gui.window)
                 self.input_chars, self.poll_chars = self.poll_chars, self.input_chars
                 self.impl.process_inputs()
                 if self.call_soon:
@@ -875,7 +880,15 @@ class MainGUI():
                 cursor = imgui.get_mouse_cursor()
                 any_hovered = imgui.is_any_item_hovered()
                 win_hovered = glfw.get_window_attrib(self.window, glfw.HOVERED)
+
+# FC: Slideshow: Reset idle time whenever ...
+                if (prev_mouse_pos != mouse_pos and (win_hovered or any_hovered)) \
+                or prev_minimized or self.minimized or prev_hidden or self.hidden \
+                or any(imgui.io.keys_down) or any(imgui.io.mouse_down) or imgui.io.mouse_wheel:
+                    slideshow.reset_idle_timer()
+
                 if first_frame or (not self.hidden and not self.minimized):  # Visible
+
 
                     # Scroll modifiers (must be before new_frame())
                     imgui.io.mouse_wheel *= globals.settings.scroll_amount
@@ -4064,6 +4077,10 @@ class MainGUI():
                     draw_settings_label(f"Filtered games count: {len(self.show_games_ids.get(None, ()))}")
                 imgui.text("")
                 imgui.spacing()
+# FC: Testing purpose only to detect if every user action resets the timer
+            draw_settings_label(f"Current timer interval: {globals.settings.slideshow_idle_seconds - int(globals.slideshow_idle_timer)}")
+            imgui.text("")
+            imgui.spacing()
 
             draw_settings_label("Add filter:")
             changed, value = imgui.combo("###add_filter", 0, FilterMode._member_names_)
@@ -4500,6 +4517,44 @@ class MainGUI():
                 "best together with Tex compress, so image load times are very short and completely unnoticeable due to preloading."
             )
             draw_settings_checkbox("preload_nearby_images")
+
+# FC: Slideshow: Sidebar settings
+            draw_settings_label(
+                "Start slideshow:",
+                "Creates a slideshow of game banners. Press ESC to stop.\nPlease be aware that this will use a fair amount of CPU cyles."
+            )
+            if imgui.button(icons.projector_screen_outline, width=right_width / 3):
+                slideshow.open(globals.gui.window, None, tab_only=globals.settings.slideshow_tab_only)
+
+            draw_settings_label(
+                "Cycle current tab only:",
+                "If unchecked the slideshow will cycle through all game banners,\nif checked only game banners in the current tab will be shown."
+            )
+            draw_settings_checkbox("slideshow_tab_only")
+
+            draw_settings_label(
+                "Cycle in random order:",
+                "If checked game banners will be selected randomly,\nif unchecked game banners will be selected in one of two ways:\n- if cycling through only the active tab: in sort order.\n- if cycling through all tabs: in game id order"
+            )
+            draw_settings_checkbox("slideshow_random_order")
+
+            draw_settings_label(
+                "Interval:",
+                "Delay in seconds before showing the next game banner.\nAllowed range is from 5-60sec (5 seconds to 1 minute).\nDefault is 5 seconds."
+            )
+            changed, value = imgui.drag_int("###slideshow_interval", set.slideshow_interval, 1.0, 5, 60, "%d sec")
+            set.slideshow_interval = min(max(value, 5), 60)
+            if changed:
+                async_thread.run(db.update_settings("slideshow_interval"))
+
+            draw_settings_label(
+                "Start after:",
+                "Delay in seconds before activating the slideshow.\n0 to disable autostart."
+            )
+            changed, value = imgui.drag_int("###slideshow_idle_seconds", set.slideshow_idle_seconds, 1.0, 0, 1800, "%d sec")
+            set.slideshow_idle_seconds = min(max(value, 0), 1800)
+            if changed:
+                async_thread.run(db.update_settings("slideshow_idle_seconds"))
 
             imgui.end_table()
             imgui.spacing()

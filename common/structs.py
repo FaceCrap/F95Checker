@@ -868,6 +868,13 @@ class Settings:
     scroll_smooth_speed         : float
     select_executable_after_add : bool
     show_remove_btn             : bool
+# FC: Slideshow settings
+    slideshow_auto_play         : bool
+    slideshow_random_order      : bool
+    slideshow_tab_only          : bool
+    slideshow_transition_dur    : float
+    slideshow_interval          : int
+    slideshow_idle_seconds      : int
     software_webview            : bool
     start_in_background         : bool
     start_refresh               : bool

@@ -1,5 +1,6 @@
 # OpenGL + glfw
 PyOpenGL==3.1.7
+numpy==1.26.0 # avoids compilation errors installing PyOpenGL-accelerate on Python 3.13
 glfw==2.8.0
 
 # Interface stuff
@@ -36,7 +37,7 @@ certifi
 # Archive extract
 py7zr==0.22.0
 rarfile==4.2
-zipfile-deflate64==0.2.0 ; sys_platform != "darwin"
+#zipfile-deflate64==0.2.0 ; sys_platform != "darwin"
 zipfile-deflate64-macos==0.1.0 ; sys_platform == "darwin"
 
 # BeautifulSoup

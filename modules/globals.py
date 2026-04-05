@@ -42,7 +42,7 @@ def _():
     home = pathlib.Path.home()
     if sys.platform.startswith("win"):
         os = Os.Windows
-        data_path = "AppData/Roaming/f95checker"
+        data_path = "AppData/Roaming/f95checker-slideshow"
     elif sys.platform.startswith("linux"):
         os = Os.Linux
         if (home / ".f95checker").exists() and not (home / ".config/f95checker").exists():
@@ -208,3 +208,6 @@ popup_stack: list[Popup] = []
 updated_games: dict[int, OldGame] = {}
 updated_games_sorted_ids: list[int] = []
 new_updated_games: dict[int, OldGame] = {}
+# FC: Slideshow variables
+slideshow_window: "SlideshowWindow | None" = None
+slideshow_idle_timer: float = 0.0
