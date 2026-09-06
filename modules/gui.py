@@ -526,10 +526,22 @@ class MainGUI():
         # Fix clicking into multiline textboxes
         imgui._input_text_multiline = imgui.input_text_multiline
         def input_text_multiline(*args, **kwargs):
-            pos = imgui.io.mouse_pos
-            imgui.io.mouse_pos = (pos.x - 8, pos.y)
+            if len(args) > 3:
+                width = args[3]
+            elif "width" in kwargs:
+                width = kwargs["width"]
+            else:
+                width = imgui.get_content_region_available_width()
+            if width < 0:
+                width = imgui.get_content_region_available_width() - width
+            pos = imgui.get_cursor_screen_pos()
+            mouse_pos = imgui.io.mouse_pos
+            fix_position = mouse_pos.x < pos.x + width - imgui.style.scrollbar_size + imgui.style.frame_border_size
+            if fix_position:
+                imgui.io.mouse_pos = (mouse_pos.x - 8, mouse_pos.y)
             ret = imgui._input_text_multiline(*args, **kwargs)
-            imgui.io.mouse_pos = (pos.x, pos.y)
+            if fix_position:
+                imgui.io.mouse_pos = (mouse_pos.x, mouse_pos.y)
             return ret
         imgui.input_text_multiline = input_text_multiline
         # Fix some ID hell
