@@ -50,6 +50,7 @@
 - Pending image loads are cancelled if Settings > Images > Unload off-screen is enabled and image is no longer visible, so visible images can load sooner (by @WillyJL)
 - Fix missing icon on Wayland (#297 by @phubhunter)
 - Handle Cloudflare capcthas as 'F95zone unavailable' warnings (by @WillyJL)
+- Fix RPDL token expiry detection (by @WillyJL)
 
 ### Removed:
 - Collection and SiteRip thread types are gone, these are now detected as the appropriate animation/comic/game type

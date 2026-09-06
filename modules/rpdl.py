@@ -235,6 +235,8 @@ def has_authenticated_tracker(res: bytes | dict):
                 return False
             if res.get("error").startswith("Token expired."):
                 return False
+            if res.get("error").startswith("Token not found."):
+                return False
             raise msgbox.Exc(
                 "Unknown response",
                 "RPDL sent an unknown response.",
