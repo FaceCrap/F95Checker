@@ -166,6 +166,11 @@ async def login():
                 imgui.spacing()
                 _320 = globals.gui.scaled(320)
 
+                imgui.text("If you have issues registering, try from the")
+                imgui.same_line()
+                if imgui.small_button(f"website {icons.open_in_app}"):
+                    callbacks.open_webpage("https://dl.rpdl.net/register")
+
                 imgui.text("Username:")
                 imgui.same_line()
                 pos = imgui.get_cursor_pos_x()

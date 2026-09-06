@@ -51,6 +51,7 @@
 - Fix missing icon on Wayland (#297 by @phubhunter)
 - Handle Cloudflare capcthas as 'F95zone unavailable' warnings (by @WillyJL)
 - Fix RPDL token expiry detection (by @WillyJL)
+- Add link to RPDL browser register page due to captcha/verification seemingly being required now (by @WillyJL)
 
 ### Removed:
 - Collection and SiteRip thread types are gone, these are now detected as the appropriate animation/comic/game type
