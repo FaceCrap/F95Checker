@@ -704,7 +704,7 @@ def open_search_popup(query: str):
         _f95zone_search_popup,
         buttons=True,
         closable=True,
-        outside=False
+        outside=True
     )
     async_thread.run(_f95zone_run_search())
 
@@ -1708,7 +1708,7 @@ def open_ddl_popup(game: Game):
         _f95_ddl_popup,
         buttons=True,
         closable=True,
-        outside=False,
+        outside=True,
         footer="Thanks for supporting F95zone!"
     )
     async_thread.run(_ddl_load_files())

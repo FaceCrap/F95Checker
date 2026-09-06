@@ -2980,6 +2980,7 @@ class MainGUI():
             game.cancel_preview_loading()
             game.unload_previews()
             return 0, True
+        # Here outside=False because we handle it more granularly inside popup_content()
         result = utils.popup(game.name, popup_content, closable=True, outside=False, resize=False, popup_uuid=popup_uuid)
         if result[1]:
             # A closed info popup is no longer a visible owner of its
@@ -4527,7 +4528,7 @@ class MainGUI():
                         popup_content,
                         buttons=True,
                         closable=True,
-                        outside=False
+                        outside=True
                     )
             else:
                 draw_settings_label("Use private mode:")
@@ -5096,7 +5097,7 @@ class MainGUI():
                         popup_content,
                         buttons=True,
                         closable=True,
-                        outside=False
+                        outside=True
                     )
                 if imgui.button("Unknown tags", width=-offset):
                     unknown_tags = builtins.type("_", (), dict(_="\n".join(builtins.set(itertools.chain.from_iterable(game.unknown_tags for game in globals.games.values())))))()
@@ -5116,7 +5117,7 @@ class MainGUI():
                         popup_content,
                         buttons=True,
                         closable=True,
-                        outside=False
+                        outside=True
                     )
                 imgui.tree_pop()
             if imgui.tree_node("Clear", flags=imgui.TREE_NODE_SPAN_AVAILABLE_WIDTH):

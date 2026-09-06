@@ -147,7 +147,7 @@ def add_game_exe(game: Game, callback: typing.Callable = None):
                 popup_content,
                 buttons=buttons,
                 closable=True,
-                outside=False
+                outside=True
             )
             return
         elif selected == use_dir:

@@ -212,7 +212,7 @@ async def login():
         utils.popup, "RPDL account",
         popup_content,
         closable=True,
-        outside=False
+        outside=True
     )
     while popup.open:
         if login is False:
@@ -391,7 +391,7 @@ def open_search_popup(game: Game):
         _rpdl_search_popup,
         buttons=True,
         closable=True,
-        outside=False,
+        outside=True,
         footer="Donate at rpdl.net if you like the torrents!"
     )
     async_thread.run(_rpdl_run_search())

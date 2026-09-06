@@ -38,6 +38,7 @@
 - Updated dependencies (by @WillyJL):
   - New cx-Freeze version skips unused PyQt6 .dll/.so/.dylib libraries, Windows/Linux install sizes reduced by 70-100MB
   - Possibly better Linux support with GLFW and desktop-notifier updates
+- Make most remaining popups closable by clicking outside the popup (by @WillyJL)
 
 ### Fixed:
 - Fix window show/hide from other threads and from tray icon (#286 by @cicklolwut & @WillyJL)
