@@ -4931,22 +4931,8 @@ class MainGUI():
             for label_i, label in enumerate(Label.instances):
                 imgui.table_next_row()
                 imgui.table_next_column()
-                if imgui.button(icons.filter_plus_outline, width=frame_height):
-                    flt = Filter(FilterMode.Label)
-                    flt.match = label
-                    self.filters.append(flt)
+                imgui.button(f"{icons.sort}###label_sort_{label.id}", width=frame_height)
                 imgui.same_line()
-                changed, value = imgui.color_edit3(f"###label_color_{label.id}", *label.color[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-                if changed:
-                    label.color = (*value, 1.0)
-                    async_thread.run(db.update_label(label, "color"))
-                imgui.same_line()
-                imgui.set_next_item_width(width - frame_height * 3 - imgui.style.cell_padding.x * 3 - imgui.style.scrollbar_size * (imgui.get_scroll_max_y() > 0.0))
-                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name)
-                setter_extra = lambda _=None: async_thread.run(db.update_label(label, "name"))
-                if changed:
-                    label.name = value
-                    setter_extra()
                 if imgui.is_item_active():
                     mouse_pos = imgui.get_mouse_pos()
                     if label_i > 0 and imgui.get_item_rect_min().y > 0 and mouse_pos.y < imgui.get_item_rect_min().y:
@@ -4957,11 +4943,24 @@ class MainGUI():
                         if imgui.get_mouse_drag_delta().y > 0:
                             swap = (label_i, label_i + 1)
                         imgui.reset_mouse_drag_delta()
-                if imgui.begin_popup_context_item(f"###label_name_{label.id}_context"):
-                    utils.text_context(label, "name", setter_extra)
-                    imgui.end_popup()
+                    imgui.push_alpha(0.5)
+                    imgui.get_window_draw_list().add_rect_filled(
+                        0, pos_y := imgui.get_cursor_screen_pos().y - imgui.style.cell_padding.y,
+                        imgui.io.display_size.x, pos_y + frame_height + 2 * imgui.style.cell_padding.y,
+                        imgui.get_color_u32_rgba(*globals.settings.style_accent)
+                    )
+                    imgui.pop_alpha()
+                if imgui.button(icons.filter_plus_outline, width=frame_height):
+                    flt = Filter(FilterMode.Label)
+                    flt.match = label
+                    self.filters.append(flt)
                 imgui.same_line()
-                if imgui.button(icons.trash_can_outline, width=frame_height):
+                changed, value = imgui.color_edit3(f"###label_color_{label.id}", *label.color[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    label.color = (*value, 1.0)
+                    async_thread.run(db.update_label(label, "color"))
+                imgui.same_line()
+                def _maybe_remove_label(label):
                     if set.confirm_on_remove:
                         buttons = {
                             f"{icons.check} Yes": lambda: async_thread.run(db.delete_label(label)),
@@ -4977,6 +4976,22 @@ class MainGUI():
                         )
                     else:
                         async_thread.run(db.delete_label(label))
+                buttons_num = 3 + set.show_remove_btn
+                imgui.set_next_item_width(width - frame_height * buttons_num - imgui.style.cell_padding.x * buttons_num - imgui.style.scrollbar_size * (imgui.get_scroll_max_y() > 0.0))
+                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name)
+                setter_extra = lambda _=None: async_thread.run(db.update_label(label, "name"))
+                if changed:
+                    label.name = value
+                    setter_extra()
+                if imgui.begin_popup_context_item(f"###label_name_{label.id}_context"):
+                    utils.text_context(label, "name", setter_extra)
+                    if imgui.selectable(f"{icons.trash_can_outline} Remove", False)[0]:
+                        _maybe_remove_label(label)
+                    imgui.end_popup()
+                if set.show_remove_btn:
+                    imgui.same_line()
+                    if imgui.button(icons.trash_can_outline, width=frame_height):
+                        _maybe_remove_label(label)
 
             if swap:
                 Label.instances[swap[0]], Label.instances[swap[1]] = Label.instances[swap[1]], Label.instances[swap[0]]
