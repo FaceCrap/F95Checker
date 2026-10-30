@@ -1,16 +1,20 @@
 # https://gist.github.com/WillyJL/bb410bcc761f8bf5649180f22b7f3b44
 import threading
 import typing
+# FC: Use a deque instead of a list to make it a FIFO instead of a LIFO
+import collections
 
-stack: list = []
+stack: collections.deque = None
 threads: list[threading.Thread] = []
 _lock: threading.Lock = None
 _condition: threading.Condition = None
 
 
 def setup(count: int):
-    global _lock, _condition
+    global stack, _lock, _condition
 
+# FC: Use a deque instead of a list to make it a FIFO instead of a LIFO
+    stack = collections.deque()
     _lock = threading.Lock()
     _condition = threading.Condition()
 
@@ -19,7 +23,7 @@ def setup(count: int):
             while stack:
                 try:
                     with _lock:
-                        fn = stack.pop()
+                        fn = stack.popleft()
                 except IndexError:
                     continue
                 fn()

@@ -5,7 +5,7 @@ import sys
 from common import meta
 
 # Main metadata
-name = "F95Checker"
+name = "F95Checker-Test"
 version = meta.version
 identifier = "io.github.willy-jl.f95checker"
 icon = meta.self_path / "resources/icons/icon"
@@ -71,7 +71,7 @@ zip_exclude_packages = [
 ] + (["PyQt6"] if sys.platform.startswith("win") else [])
 optimize = 2
 silent_level = 0
-include_msvcr = True
+include_msvcr = False
 
 
 # Add correct icon extension
@@ -207,4 +207,5 @@ cx_Freeze.setup(
         "browser": BrowserExtension,
         "extension": BrowserExtension,
     },
+#    script_args=["egg_info", f"--egg-base={egg_base_dir}", "build"]
 )

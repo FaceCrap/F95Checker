@@ -58,7 +58,9 @@ def apply():
     import tarfile
     tarfile.TarFile.extraction_filter = tarfile.data_filter  # Fix path and link traversal
 
-    import zipfile_deflate64 as zipfile
+# FC: No wheel for 3.11.9
+#    import zipfile_deflate64 as zipfile
+    import zipfile
     def unpack_zipfile(archive, path):
         if not zipfile.is_zipfile(archive):
             raise shutil.ReadError(f"{archive} is not a zip file")

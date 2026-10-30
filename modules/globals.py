@@ -42,7 +42,8 @@ def _():
     home = pathlib.Path.home()
     if sys.platform.startswith("win"):
         os = Os.Windows
-        data_path = "AppData/Roaming/f95checker"
+# FC: Use non-default appdata folder
+        data_path = "AppData/Roaming/f95checker-Test"
     elif sys.platform.startswith("linux"):
         os = Os.Linux
         if (home / ".f95checker").exists() and not (home / ".config/f95checker").exists():

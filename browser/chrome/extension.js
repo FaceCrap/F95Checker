@@ -70,14 +70,13 @@ const update = async (tabId) => {
                         font: normal normal normal 24px/1 "MDI Custom";
                         font-size: inherit;
                         text-rendering: auto;
-                        line-height: inherit;
+                        /*line-height: inherit;*/
                         -webkit-font-smoothing: antialiased;
                         -moz-osx-font-smoothing: grayscale;
                     }
                     .mdi::before {
                         content: var(--mdi-i);
-                    }
-                `;
+                    }`;
                 styleTag.appendChild(document.createTextNode(cssContent));
                 document.head.appendChild(styleTag);
             };
@@ -96,6 +95,8 @@ const update = async (tabId) => {
                 const game = games.find(g => g.id === gameId);
                 icon.classList.add('mdi');
                 icon.style.setProperty('--mdi-i', `'${game.icon}'`);
+                icon.style.margin = '0';
+                icon.style.padding = '0';
                 let tooltiptext = 'This game is present in your F95Checker library!';
                 if (game.notes) {
                     tooltiptext += `\n\nNOTES: ${game.notes}`;
@@ -107,9 +108,19 @@ const update = async (tabId) => {
                 icon.style.color = game.color;
                 return [icon, game.color];
             };
+            const createUpdate = (gameId) => {
+                const icon = document.createElement('i');
+                const game = games.find(g => g.id === gameId);
+                icon.classList.add('mdi');
+                icon.style.setProperty('--mdi-i', `'${game.update}'`);
+                icon.style.margin = '0';
+                icon.style.padding = '0';
+                icon.style.color = game.updclr;
+                return [icon, game.updclr];
+            };
             const createNbsp = () => {
                 const span = document.createElement('span');
-                span.style.display = 'inline-block';
+                span.classList.add('label-append');
                 span.innerHTML = '&nbsp;';
                 return span;
             };
@@ -162,6 +173,11 @@ const update = async (tabId) => {
 
                     const container = createContainer();
                     const [icon, color] = createIcon(elemId);
+//                    const game = games.find(g => g.id === elemId);
+//                    if (game.update) {
+//                        const [update, __] = createUpdate(elemId);
+//                        container.prepend(update);
+//                    }
                     container.prepend(icon);
 
                     if (isImage) {
@@ -175,14 +191,14 @@ const update = async (tabId) => {
                         container.style.borderRadius = '4px';
                         container.style.fontSize = '1.5em';
                         if (settings.icon_glow) {
-                            container.style.boxShadow = `0px 0px 30px 30px ${color.slice(0, 7)}bb`;
+                            container.style.boxShadow = `0px 0px 10px 10px ${color.slice(0, 7)}bb`;
                         }
                     }
 
                     if (!isImage && elem.children.length > 0) {
                         // Search page
-                        container.style.fontSize = '1.2em';
-                        container.style.verticalAlign = '-2px';
+                        container.style.fontSize = '1.75em';
+                        container.style.verticalAlign = '-6px';
                         const whitespaces = elem.querySelectorAll('span.label-append');
                         if(whitespaces.length > 0) {
                             const lastWhitespace = whitespaces[whitespaces.length - 1];
@@ -203,8 +219,8 @@ const update = async (tabId) => {
                         thumb.insertAdjacentElement('beforebegin', container);
                     } else {
                         // Everywhere else
-                        container.style.fontSize = '1.2em';
-                        container.style.verticalAlign = '-2px';
+                        container.style.fontSize = '1.5em';
+                        container.style.verticalAlign = '-3px';
                         elem.insertAdjacentElement('beforebegin', container);
                         elem.insertAdjacentElement('beforebegin', createNbsp());
                     }
@@ -213,12 +229,18 @@ const update = async (tabId) => {
             const addPageIcon = () => {
                 const id = extractThreadId(document.location);
                 const container = createContainer();
-                container.style.fontSize = '1.3em';
-                container.style.verticalAlign = '-3px';
+                container.style.fontSize = '1.5em';
+                container.style.verticalAlign = '-6px';
+                container.style.margin = '0px';
                 const title = document.getElementsByClassName('p-title-value')[0];
                 if (title) {
                     if (games.map(g => g.id).includes(id)) {
                         const [icon, _] = createIcon(id);
+//                        const game = games.find(g => g.id === id);
+//                        if (game.update) {
+//                            const [update, __] = createUpdate(id);
+//                            container.prepend(update);
+//                        }
                         container.prepend(icon);
                         title.insertBefore(
                             container,
@@ -231,6 +253,7 @@ const update = async (tabId) => {
                     };
                 }
             };
+            // observer for Latest Updates page
             const installHighlighterMutationObservers = () => {
                 const tiles = document.querySelectorAll('div.resource-tile_body');
                 tiles.forEach((tile) => {
@@ -238,12 +261,33 @@ const update = async (tabId) => {
                     observer.observe(tile, { attributes: true, subtree: true });
                 });
             }
+			// observer for community tagz row
+            const installHighlighterMutationObserverz = () => {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType !== Node.ELEMENT_NODE) return;
+                            let tagzRow = null;
+                            if (node.matches('div.f95z-tags-row')) {
+                                tagzRow = node;
+                            } else {
+                                tagzRow = node.querySelector('div.f95z-tags-row');
+                            }
+                            if (tagzRow) {
+                                highlightTagz(tagzRow);
+                            }
+                        });
+                    });
+                });
+
+                observer.observe(document.body, { childList: true, subtree: true });
+            };
+            const highlightColors = {
+                1: { text: 'white', background: '#006600', border: '1px solid #ffffff55' }, // Positive
+                2: { text: 'white', background: '#990000', border: '1px solid #ffffff55' }, // Negative
+                3: { text: 'white', background: '#000000', border: '1px solid #ffffff55' }, // Critical
+            };
             const highlightTags = () => {
-                const highlightColors = {
-                    1: { text: 'white', background: '#006600', border: '1px solid #ffffff55' }, // Positive
-                    2: { text: 'white', background: '#990000', border: '1px solid #ffffff55' }, // Negative
-                    3: { text: 'white', background: '#000000', border: '1px solid #ffffff55' }, // Critical
-                };
                 // Latest Updates
                 const hoveredTiles = document.querySelectorAll('div.resource-tile-hover');
                 hoveredTiles.forEach((tile) => {
@@ -272,6 +316,19 @@ const update = async (tabId) => {
                     }
                 });
             };
+            // community voted tag list
+            const highlightTagz = (tagzRow) => {
+	            const tagzSpans = tagzRow.querySelectorAll('span.f95z-name');
+                tagzSpans.forEach((span) => {
+                    const name = span.innerText;
+                    if (settings.tags_highlights.hasOwnProperty(name)) {
+                        const highlight = settings.tags_highlights[name];
+                        span.style.color = highlightColors[highlight].text;
+                        span.style.backgroundColor = highlightColors[highlight].background;
+                        span.style.border = highlightColors[highlight].border;
+                    }
+                });
+            };
             const doUpdate = () => {
                 injectCustomWebfont();
                 removeOldIcons();
@@ -279,6 +336,7 @@ const update = async (tabId) => {
                 addPageIcon();
                 if (settings.highlight_tags) {
                     installHighlighterMutationObservers();
+                    installHighlighterMutationObserverz();
                     highlightTags();
                 }
             };
@@ -314,21 +372,36 @@ chrome.contextMenus.create({
     title: `Add this page to F95Checker`,
     contexts: ['page'],
     documentUrlPatterns: ['*://*.f95zone.to/threads/*'],
+},
+() => {
+    if (chrome.runtime.lastError) {
+        // swallow the error since it's non-fatal anyway
+    }
 });
 chrome.contextMenus.create({
     id: `add-link-to-f95checker`,
     title: `Add this link to F95Checker`,
     contexts: ['link'],
     targetUrlPatterns: ['*://*.f95zone.to/threads/*'],
+},
+() => {
+    if (chrome.runtime.lastError) {
+        // swallow the error since it's non-fatal anyway       
+    }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-    switch (info.menuItemId) {
-        case 'add-link-to-f95checker':
-        case 'add-page-to-f95checker':
-            addGame(info.linkUrl || info.pageUrl, tab.id);
-            break;
+    try {
+        switch (info.menuItemId) {
+            case 'add-link-to-f95checker':
+            case 'add-page-to-f95checker':
+                addGame(info.linkUrl || info.pageUrl, tab.id);
+                break;
+        }
+    } catch (error) {
+        // swallow the error since it's non-fatal anyway
     }
+    
 });
 
 setInterval(getData, 5 * 60 * 1000); // 5 minutes

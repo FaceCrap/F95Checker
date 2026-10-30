@@ -40,8 +40,11 @@ def rand_num_str(len=8):
 
 
 def clean_str(text: str):
-    clean_charset = string.ascii_letters + string.digits + " "
-    clean_text = "".join(char for char in text.replace("&", "and") if char in clean_charset)
+# FC: Replace " " with "-", add "()-_'" as allowed characters, strip trailing digits, strip any leftover trailing "-" and finally replace any "A-..." with "A_"
+    clean_charset = string.ascii_letters + string.digits + "()-_'’ "
+    clean_text = "".join(char for char in text.replace("&", "and").replace(" ", "-") if char in clean_charset)
+    if clean_text.startswith("A-"):
+        clean_text = clean_text.replace("A-", "A_")
     clean_text = re.sub(r"\s+", r" ", clean_text).strip()
     return clean_text
 
@@ -197,6 +200,58 @@ def close_weak_popup():
     return False
 
 
+"""
+def wrap_text(text: str, width: float, offset=0, func: typing.Callable = imgui.text):
+    avail = width - offset
+    if avail < 0:
+        imgui.dummy(0, 0)
+        avail = width
+    for line in text.split("\n"):
+        while line := line.strip():
+            if avail == 0:
+                func(line)
+                break
+            w = imgui.calc_text_size(line).x
+            if w <= avail:
+                func(line)
+                break
+            cut = 0
+            txt = line
+            while w > avail:
+                avg_char_x = w / len(txt)
+                cut = int(avail / avg_char_x)
+                cut = min(len(txt)-1, cut)
+                txt = txt[:cut]
+                w = imgui.calc_text_size(txt).x
+            func(txt)
+            line = line[cut:]
+# FC: Old way
+    for line in text.split("\n"):
+        while line := line.strip():
+            if offset is not None:
+                avail = width - offset
+            if avail < 0:
+                imgui.dummy(0, 0)
+                if offset is not None:
+                    offset = None
+                    avail = width
+                continue
+            if avail > 0:
+                cut = 1
+                line_len = len(line)
+                step = math.ceil(line_len / 50)
+                while cut <= line_len and imgui.calc_text_size(line[:cut]).x < avail:
+                    cut += step
+                while cut > 1 and (cut > line_len or imgui.calc_text_size(line[:cut]).x >= avail):
+                    cut -= 1
+            else:
+                cut = len(line)
+            func(line[:cut])
+            line = line[cut:]
+            if offset is not None:
+                offset = None
+                avail = width
+"""
 def text_context(obj: object, attr: str, setter_extra: typing.Callable = lambda _: None, editable=True, no_icons=False):
     getter = lambda: getattr(obj, attr)
     setter = lambda val: [setattr(obj, attr, val), setter_extra(val)]
@@ -299,7 +354,7 @@ def popup(label: str, popup_content: typing.Callable, buttons: dict[str, typing.
                         closed = True
                     imgui.same_line()
         if outside:
-             closed = closed or close_weak_popup()
+            closed = closed or close_weak_popup()
     else:
         opened = 0
         closed = True
@@ -336,3 +391,37 @@ def push_popup(*args, bottom=False, **kwargs):
             icon=desktop_notifier.Icon(globals.self_path / "resources/icons/error.png")
         )
     return popup
+
+# FC: Universal wrap point finder for timeline messages
+def find_wrap_pos(s, compact = False):
+    to_pos = s.find(" to ")
+    if to_pos > -1:
+        return to_pos
+    elif compact:
+        midpoint = (len(s) + s.find('"')) // 2
+    else:
+        midpoint = len(s) // 2  # Find the midpoint of the string
+
+    left_space = s.rfind('/', 0, midpoint)      # Search for slash to the left of midpoint
+    right_space = s.find('/', midpoint)         # Search for slash to the right of midpoint
+    if left_space == (-1) and right_space == (-1):
+        left_space = s.rfind(' ', 0, midpoint)  # Search for space to the left of midpoint
+        right_space = s.find(' ', midpoint)     # Search for space to the right of midpoint
+
+    # Choose the closest space to the midpoint
+    if left_space == -1 and right_space == -1:
+        return None  # No slashes or spaces in the string
+    elif left_space == -1:
+        return right_space
+    elif right_space == -1:
+        return left_space
+    else:
+        return left_space if (midpoint - left_space) <= (right_space - midpoint) else right_space
+
+# Example usage
+#text = "This is an example string to test halfway space."
+#index = find_halfway_space(text)
+#if index is not None:
+#    print(f"Space found at index {index}: '{text[index]}'")
+#else:
+#    print("No spaces found in the string.")

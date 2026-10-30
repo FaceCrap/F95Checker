@@ -2,11 +2,11 @@ import os
 import pathlib
 import sys
 
-version = "11.2.2"
+version = "11.3"
 release = False
-build_number = 0
+build_number = 1950
 version_name = f"{version}{'' if release else ' beta'}{'' if release or not build_number else ' ' + str(build_number)}"
-rpc_port = 57095
+rpc_port = 57096
 rpc_url = f"http://127.0.0.1:{rpc_port}"
 
 frozen = getattr(sys, "frozen", False)

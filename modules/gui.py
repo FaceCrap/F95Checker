@@ -9,6 +9,7 @@ import itertools
 import pathlib
 import pickle
 import platform
+import random
 import sys
 import threading
 import time
@@ -78,6 +79,7 @@ from modules import (
 tool_page         = api.f95_threads_page + "44173/"
 github_page       = "https://github.com/WillyJL/F95Checker"
 developer_page    = "https://linktr.ee/WillyJL"
+devgames          = "https://f95zone.to/sam/latest_alpha/#/cat=games/page=1/creator="
 
 imgui.io = None
 imgui.style = None
@@ -129,7 +131,8 @@ class Columns:
             self.cols.items.append(self)
             self.cols.count = len(self.cols.items)
             self.index = self.cols.count - 1
-
+# FC: Reorder Context menu to reflect column order
+# FC: Show date columns in more logical order and shorten names where desired
     def __init__(self):
         self.items = []
         self.count = 0
@@ -138,18 +141,18 @@ class Columns:
             self, f"{icons.cursor_move} Manual Sort",
             ghost=True,
         )
-        self.version = self.Column(
-            self, f"{icons.star_shooting} Version",
+        self.installed_version = self.Column(
+            self, f"{icons.download} Installed Version",
             ghost=True,
-            default=True,
         )
         self.finished_version = self.Column(
             self, f"{icons.flag_checkered} Finished Version",
             ghost=True,
         )
-        self.installed_version = self.Column(
-            self, f"{icons.download} Installed Version",
+        self.version = self.Column(
+            self, f"{icons.star_shooting} Version",
             ghost=True,
+            default=True,
         )
         self.status = self.Column(
             self, f"{icons.checkbox_marked_circle} Status (after name)",
@@ -163,42 +166,41 @@ class Columns:
             hideable=False,
         )
         # Regulars
-        self.play_button = self.Column(
-            self, f"{icons.play} Play Button",
-            default=True,
-            resizable=False,
-            no_header=True,
-        )
         self.type = self.Column(
             self, f"{icons.book_information_variant} Type",
-            default=True,
-            sortable=True,
-            resizable=False,
-        )
-        self.name = self.Column(
-            self, f"{icons.gamepad_variant} Name",
-            imgui.TABLE_COLUMN_WIDTH_STRETCH | imgui.TABLE_COLUMN_DEFAULT_SORT,
-            default=True,
-            sortable=True,
-            hideable=False,
-        )
-        self.developer = self.Column(
-            self, f"{icons.account} Developer",
-            sortable=True,
-        )
-        self.last_updated = self.Column(
-            self, f"{icons.update} Last Updated",
-            default=True,
-            sortable=True,
-            resizable=False,
-        )
-        self.last_launched = self.Column(
-            self, f"{icons.play} Last Launched",
+            default=False,
             sortable=True,
             resizable=False,
         )
         self.added_on = self.Column(
             self, f"{icons.plus} Added On",
+            default=True,
+            sortable=True,
+            resizable=False,
+        )
+        self.open_folder = self.Column(
+            self, f"{icons.folder_open_outline} Open Folder",
+            default=True,
+            resizable=False,
+            no_header=True,
+        )
+        self.last_updated = self.Column(
+            self, f"{icons.update} Updated",
+            default=True,
+            sortable=True,
+            resizable=False,
+        )
+        self.installed = self.Column(
+            self, f"{icons.download} Installed",
+            default=True,
+            sortable=True,
+            resizable=False,
+            short_header=True,
+        )
+# FC: Icon was ambiguous as it was the same as the play icon
+        self.last_launched = self.Column(
+            self, f"{icons.rocket_launch} Launched",
+            default=True,
             sortable=True,
             resizable=False,
         )
@@ -209,21 +211,24 @@ class Columns:
             resizable=False,
             short_header=True,
         )
-        self.installed = self.Column(
-            self, f"{icons.download} Installed",
+        self.playtime = self.Column(
+            self, f"{icons.timer_play_outline} Playtime",
             default=True,
             sortable=True,
             resizable=False,
             short_header=True,
         )
-        self.rating = self.Column(
-            self, f"{icons.star} Rating",
-            sortable=True,
+        self.play_button = self.Column(
+            self, f"{icons.play} Play Button",
+            default=True,
             resizable=False,
+            no_header=True,
         )
-        self.notes = self.Column(
-            self, f"{icons.draw_pen} Notes",
-            sortable=True,
+        self.copy_link = self.Column(
+            self, f"{icons.content_copy} Copy Link",
+            default=True,
+            resizable=False,
+            no_header=True,
         )
         self.open_thread = self.Column(
             self, f"{icons.open_in_new} Open Thread",
@@ -231,15 +236,12 @@ class Columns:
             resizable=False,
             no_header=True,
         )
-        self.copy_link = self.Column(
-            self, f"{icons.content_copy} Copy Link",
-            resizable=False,
-            no_header=True,
-        )
-        self.open_folder = self.Column(
-            self, f"{icons.folder_open_outline} Open Folder",
-            resizable=False,
-            no_header=True,
+        self.name = self.Column(
+            self, f"{icons.controller} Name",
+            imgui.TABLE_COLUMN_WIDTH_STRETCH | imgui.TABLE_COLUMN_DEFAULT_SORT,
+            default=True,
+            sortable=True,
+            hideable=False,
         )
         self.status_standalone = self.Column(
             self, f"{icons.checkbox_marked_circle} Status (own column)",
@@ -247,14 +249,32 @@ class Columns:
             resizable=False,
             no_header=True,
         )
-        self.score = self.Column(
-            self, f"{icons.message_star} Forum Score",
+# FC: Add Last Status Change column
+        self.last_status_change = self.Column(
+            self, f"{icons.calendar} Last Status",
+            default=True,
             sortable=True,
             resizable=False,
-            short_header=True,
         )
-        self.playtime = self.Column(
-            self, f"{icons.timer_play_outline} Playtime",
+        self.developer = self.Column(
+            self, f"{icons.account} Developer",
+            default=True,
+            sortable=True,
+        )
+        self.notes = self.Column(
+            self, f"{icons.draw_pen} Notes",
+            default=True,
+            sortable=True,
+        )
+# FC: Place Rating with Forum Score
+        self.rating = self.Column(
+            self, f"{icons.star} Rating",
+            sortable=True,
+            resizable=False,
+        )
+        self.score = self.Column(
+            self, f"{icons.message_star} Forum Score",
+            default=True,
             sortable=True,
             resizable=False,
             short_header=True,
@@ -320,11 +340,15 @@ class MainGUI():
 
         # Variables
         self.focused = True
+# FC: Slideshow
+        self.shuffled = False
         self.minimized = False
         self.filtering = False
         self.add_box_text = ""
         self.new_styles = False
         self.prev_size = (0, 0)
+# FC: Slideshow
+        self.idle_timer = None
         self.screen_pos = (0, 0)
         self.repeat_chars = False
         self.scroll_percent = 0.0
@@ -343,9 +367,15 @@ class MainGUI():
         self.filters: list[Filter] = []
         self.poll_chars: list[int] = []
         self.refresh_ratio_smooth = 0.0
+# FC: Slideshow
+        self.slideshow_image_index = -1
         self.bg_mode_timer: float = None
         self.input_chars: list[int] = []
+# FC: Slideshow
+        self.slideshow_prev_time: int = 0
         self.switched_display_mode = False
+# FC: Sticky Highlight tracker
+        self.info_popup_game_id: int = None
         self.type_label_width: float = None
         self.call_soon: list[callable] = []
         self.last_selected_game: Game = None
@@ -403,7 +433,8 @@ class MainGUI():
         glfw.window_hint_string(glfw.WAYLAND_APP_ID, "F95Checker")
 
         # Create a windowed mode window and its OpenGL context
-        self.window: glfw._GLFWwindow = glfw.create_window(*size, "F95Checker", None, None)
+# FC: Different Window caption to distinguish versions
+        self.window: glfw._GLFWwindow = glfw.create_window(*size, "F95Checker-Test", None, None)
         if not self.window:
             print("Could not initialize Window")
             glfw.terminate()
@@ -760,6 +791,7 @@ class MainGUI():
         msgbox_range = imgui.core.GlyphRanges(msgbox_range_values)
         size_14 = round(self.scaled(14 * font_scaling_factor))
         size_15 = round(self.scaled(15 * font_scaling_factor))
+        size_16 = round(self.scaled(16 * font_scaling_factor))
         size_17 = round(self.scaled(17 * font_scaling_factor))
         size_18 = round(self.scaled(18 * font_scaling_factor))
         size_22 = round(self.scaled(22 * font_scaling_factor))
@@ -786,10 +818,16 @@ class MainGUI():
         fonts.small   = add_font(karlar_path, size_14, font_config=karla_config, glyph_ranges=karla_range)
         add_font(                noto_path,   size_14, font_config=noto_config,  glyph_ranges=noto_range)
         add_font(                mdi_path,    size_14, font_config=mdi_config,   glyph_ranges=mdi_range)
+# FC: Slightly smaller font on tabs
+        fonts.tabs    = add_font(karlar_path, size_17, font_config=meslo_config, glyph_ranges=meslo_range)
+        add_font(                noto_path,   size_17, font_config=noto_config,  glyph_ranges=noto_range)
+        add_font(                mdi_path,    size_17, font_config=mdi_config,   glyph_ranges=mdi_range)
         # Monospace font for some dates
         fonts.mono    = add_font(meslo_path,  size_17, font_config=meslo_config, glyph_ranges=meslo_range)
+# FC: Slightly bigger font for date on Compact Timeline
+        fonts.mono_tl = add_font(meslo_path,  size_18, font_config=meslo_config, glyph_ranges=meslo_range)
         # Small monospace font for more info dropdowns
-        fonts.mono_sm = add_font(meslo_path,  size_15, font_config=meslo_config, glyph_ranges=meslo_range)
+        fonts.mono_sm = add_font(meslo_path,  size_16, font_config=meslo_config, glyph_ranges=meslo_range)
         # MsgBox type icons/thumbnails
         fonts.msgbox  = add_font(mdi_path,    size_69,                           glyph_ranges=msgbox_range)
         try:
@@ -828,6 +866,25 @@ class MainGUI():
                         self.filters.remove(flt)
         except Exception:
             self.filters = []
+
+    def save_styles_to_toml(self):
+        path = pathlib.Path(globals.data_path / 'styles.toml')
+        styles = (f"""corner_radius={globals.settings.style_corner_radius}
+accent="{colors.rgba_0_1_to_hex(globals.settings.style_accent)}"
+bg="{colors.rgba_0_1_to_hex(globals.settings.style_bg)}"
+alt_bg="{colors.rgba_0_1_to_hex(globals.settings.style_alt_bg)}"
+border="{colors.rgba_0_1_to_hex(globals.settings.style_border)}"
+text="{colors.rgba_0_1_to_hex(globals.settings.style_text)}"
+text_dim="{colors.rgba_0_1_to_hex(globals.settings.style_text_dim)}"
+"""
+        )
+        try:
+            with open(path, 'w') as file:
+# FC: FFS, the native module doesn't support dump/dumps
+                file.write(styles)
+                file.close()
+        except Exception:
+            pass
 
     def load_styles_from_toml(self):
         if not (path := pathlib.Path(globals.data_path / 'styles.toml')).is_file():
@@ -884,6 +941,12 @@ class MainGUI():
                     async_thread.run(api.import_browser_bookmarks(path))
                 elif path.suffix and path.suffix.lower() == ".url":
                     async_thread.run(api.import_url_shortcut(path))
+
+# FC: Callback for the idletimer to signal slideshow should start.
+# FC: Currently unused due to reverting back from pure GLFW mode
+    def slideshow_callback(self):
+        globals.settings.slideshow_start_playing = True
+        async_thread.run(db.update_settings("slideshow_start_playing"))
 
     @property
     def hidden(self):
@@ -962,6 +1025,7 @@ class MainGUI():
                 cursor = imgui.get_mouse_cursor()
                 any_hovered = imgui.is_any_item_hovered()
                 win_hovered = glfw.get_window_attrib(self.window, glfw.HOVERED)
+
                 if first_frame or (not self.hidden and not self.minimized):  # Visible
 
                     # Scroll modifiers (must be before new_frame())
@@ -980,6 +1044,11 @@ class MainGUI():
                             scroll_now = 0.0
                             self.scroll_energy = 0.0
                         imgui.io.mouse_wheel = scroll_now
+
+# FC: Slideshow
+                    if globals.settings.slideshow_start_playing:
+                        mouse_pos = (1, 1)
+                        win_hovered = True
 
                     # Redraw only when needed
                     launch_state_changed = callbacks.launch_state_changed
@@ -1180,6 +1249,10 @@ class MainGUI():
         if text:
             imgui.text_disabled(text)
         if force or imgui.is_item_hovered():
+# FC: Adjust for larger mouse cursor
+            if not text:
+                mouse_pos = imgui.get_mouse_pos()
+                imgui.set_next_window_position(mouse_pos.x + 32, mouse_pos.y)
             imgui.begin_tooltip()
             imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, imgui.io.display_size.x))
             imgui.text(hover_text)
@@ -1265,6 +1338,9 @@ class MainGUI():
             flt.match = label
             self.filters.append(flt)
         if short and imgui.is_item_hovered():
+# FC: Adjust for larger mouse cursor
+            mouse_pos = imgui.get_mouse_pos()
+            imgui.set_next_window_position(mouse_pos.x + 32, mouse_pos.y)
             imgui.begin_tooltip()
             imgui.push_font(imgui.fonts.default)
             self.draw_label_widget(label, short=False)
@@ -1303,6 +1379,9 @@ class MainGUI():
             imgui.set_cursor_pos(pos)
             imgui.invisible_button("", *imgui.get_item_rect_size())
         if imgui.is_item_hovered():
+# FC: Adjust for larger mouse cursor
+            mouse_pos = imgui.get_mouse_pos()
+            imgui.set_next_window_position(mouse_pos.x + 32, mouse_pos.y)
             imgui.begin_tooltip()
             imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, imgui.io.display_size.x))
             imgui.text("This game has been updated!")
@@ -1339,6 +1418,11 @@ class MainGUI():
             imgui.set_cursor_pos(pos)
             imgui.invisible_button("", *imgui.get_item_rect_size())
         if imgui.is_item_hovered():
+# FC: Adjust for larger mouse cursor
+            mouse_pos = imgui.get_mouse_pos()
+            imgui.set_next_window_position(mouse_pos.x + 32, mouse_pos.y)
+# FC: Change overlooked tooltip to hover text
+            """
             imgui.begin_tooltip()
             imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, imgui.io.display_size.x))
             imgui.text(
@@ -1357,6 +1441,19 @@ class MainGUI():
             )
             imgui.pop_text_wrap_pos()
             imgui.end_tooltip()
+            """
+            unknown_tags = "\n".join(f" - {tag}" for tag in game.unknown_tags)
+            self.draw_hover_text(
+                "This game has new tags that F95Checker failed to recognize:\n"
+                + f"{unknown_tags}"
+                "To copy them:\n"
+                f"{icons.menu_right} Shift + Left click\n"
+                f"{icons.menu_right} Use Copy button in Tags section\n"
+                "To remove this marker:\n"
+                f"{icons.menu_right} Middle click\n"
+                f"{icons.menu_right} Alt + Left click\n",
+                text=None
+            )
         if imgui.is_item_clicked(imgui.MOUSE_BUTTON_MIDDLE):
             # Middle click - remove unknown tags marker
             game.unknown_tags_flag = False
@@ -1464,7 +1561,12 @@ class MainGUI():
                 checkbox = imgui.checkbox
             else:
                 checkbox = imgui._checkbox
-            changed, _ = checkbox(f"{label}###{game.id}_finished", bool(game.finished))
+# FC: Put label before checkbox
+            if label != "":
+                imgui.align_text_to_frame_padding()
+                imgui.text(label + "")
+                imgui.same_line()
+            changed, _ = checkbox(f"###{game.id}_finished", bool(game.finished))
             if changed:
                 if installed_finished:
                     game.finished = ""  # Finished -> Not finished
@@ -1483,7 +1585,10 @@ class MainGUI():
                 imgui.text("Click to mark installed as finished.")
                 imgui.pop_text_wrap_pos()
                 imgui.end_tooltip()
-        else:
+        else: # multi-select contect menu
+# FC: Put label before checkbox
+            imgui.text(label + "")
+            imgui.same_line()
             if imgui.small_button(icons.check):
                 for game in globals.games.values():
                     if game.selected:
@@ -1494,8 +1599,6 @@ class MainGUI():
                 for game in globals.games.values():
                     if game.selected:
                         game.finished = ""
-            imgui.same_line()
-            imgui.text(label + " ")
 
     def draw_game_installed_checkbox(self, game: Game, label=""):
         if game:
@@ -1504,7 +1607,12 @@ class MainGUI():
                 checkbox = imgui.checkbox
             else:
                 checkbox = imgui._checkbox
-            changed, _ = checkbox(f"{label}###{game.id}_installed", bool(game.installed))
+# FC: Put label before checkbox
+            if label != "":
+                imgui.align_text_to_frame_padding()
+                imgui.text(label + "")
+                imgui.same_line()
+            changed, _ = checkbox(f"###{game.id}_installed", bool(game.installed))
             if changed:
                 if latest_installed:
                     game.installed = ""  # Latest installed -> Not installed
@@ -1524,7 +1632,10 @@ class MainGUI():
                 imgui.text("Click to mark latest as installed.")
                 imgui.pop_text_wrap_pos()
                 imgui.end_tooltip()
-        else:
+        else: # multi-select context menu
+# FC: Put label before checkbox
+            imgui.text(label + "")
+            imgui.same_line()
             if imgui.small_button(icons.check):
                 for game in globals.games.values():
                     if game.selected:
@@ -1536,8 +1647,6 @@ class MainGUI():
                 for game in globals.games.values():
                     if game.selected:
                         game.installed = ""
-            imgui.same_line()
-            imgui.text(label + " ")
 
     def draw_game_rating_widget(self, game: Game):
         if not game:
@@ -1596,6 +1705,31 @@ class MainGUI():
                 text = "\n".join(_url(game) for game in globals.games.values() if game.selected if game.url)
             callbacks.clipboard_copy(text)
 
+# FC: Open Last Updates page showing all games by this developer.
+    def draw_game_open_devgames_icon(self, developer):
+        pos = imgui.get_cursor_pos()
+        imgui.text(icons.open_in_new)
+        imgui.set_cursor_pos(pos)
+        if imgui.invisible_button("", *imgui.get_item_rect_size()):
+            # Also add name to bottom bar to filter existing games from this dev
+            self.add_box_text = developer
+            self.recalculate_ids = True
+            callbacks.open_webpage(f"{devgames}{developer}")
+        imgui.same_line()
+        imgui.text(developer)
+
+# FC: Open Last Updates page showing all games by this developer.
+    def draw_game_open_devgames_button(self, game: Game, label="", selectable=False):
+        if selectable:
+            clicked = imgui.selectable(label, False)[0]
+        else:
+            clicked = imgui.button(label)
+        if clicked:
+            # Also add name to bottom bar to filter existing games from this dev
+            self.add_box_text = game.developer
+            self.recalculate_ids = True
+            callbacks.open_webpage(f"{devgames}{game.developer}")
+
     def draw_game_archive_button(self, game: Game, label_off="", label_on="", selectable=False):
         if game:
             if selectable:
@@ -1607,6 +1741,9 @@ class MainGUI():
                 if game.archived:
                     game.updated = False
         else:
+# FC: Put label before checkbox and push to edge of contextmenu
+            imgui.text(label_off + " \t")
+            imgui.same_line()
             if imgui.small_button(icons.check):
                 for game in globals.games.values():
                     if game.selected:
@@ -1617,8 +1754,6 @@ class MainGUI():
                 for game in globals.games.values():
                     if game.selected:
                         game.archived = False
-            imgui.same_line()
-            imgui.text(label_off + " ")
 
     def draw_game_remove_button(self, game: Game, label="", selectable=False):
         if selectable:
@@ -1704,11 +1839,7 @@ class MainGUI():
             clicked = imgui.button(label)
         if clicked:
             callbacks.clipboard_copy(str(game.id))
-        self.draw_hover_text(
-            f"Thread ID: {game.id}\n"
-            "Click to copy!",
-            text=None,
-        )
+        self.draw_hover_text(f"Thread ID: {game.id}\nClick to copy!", text=None)
         if game.custom:
             imgui.pop_disabled()
 
@@ -1721,8 +1852,9 @@ class MainGUI():
             clicked = imgui.button(label)
         if clicked:
             games = [game] if game else list(filter(lambda g: g.selected, globals.games.values()))
-            for g in games:
-                g.add_timeline_event(TimelineEventType.RecheckUserReq)
+# FC: Don't add user-requested full-refresh to timeline (NOTE, can also be just hidden)
+#            for g in games:
+#                g.add_timeline_event(TimelineEventType.RecheckUserReq)
             utils.start_refresh_task(api.refresh(*games, full=True, notifs=False))
         if game and game.custom:
             imgui.pop_disabled()
@@ -1828,8 +1960,9 @@ class MainGUI():
         self.draw_game_clear_exes_button(game, f"{icons.folder_remove_outline} Clear Exes", selectable=True)
         self.draw_game_open_folder_button(game, f"{icons.folder_open_outline} Open Folder", selectable=True)
         imgui.separator()
-        self.draw_game_finished_checkbox(game, f"{icons.flag_checkered} Finished")
-        self.draw_game_installed_checkbox(game, f"{icons.download} Installed")
+# FC: Put label before checkbox and push to edge of contextmenu and swap order
+        self.draw_game_installed_checkbox(game, f"{icons.download} Installed\t")
+        self.draw_game_finished_checkbox(game, f"{icons.flag_checkered} Finished\t")
         imgui.separator()
         self.draw_game_rating_widget(game)
         if imgui.begin_menu(f"{icons.label_multiple_outline} Labels"):
@@ -2028,13 +2161,34 @@ class MainGUI():
             message = type.template.format(*args, *["?" for _ in range(type.args_min - len(args))])
             # Short timeline variant
             if globals.settings.compact_timeline:
-                imgui.push_font(imgui.fonts.mono)
-                imgui.text_disabled(date.strftime(globals.settings.timestamp_format))
+# FC: Use slightly dimmer text color
+                imgui.push_style_color(imgui.COLOR_TEXT, *globals.settings.style_text_dim)
+# FC: Slightly larger date in compact view and use specified dateformat.
+                imgui.push_font(imgui.fonts.mono_tl)
+                imgui.text(date.strftime(globals.settings.datestamp_format))
                 imgui.pop_font()
+                imgui.pop_style_color()
+                self.draw_hover_text(date.strftime(globals.settings.timestamp_format), text=None)
                 imgui.same_line()
                 imgui.text_colored(icon, *globals.settings.style_accent)
                 imgui.same_line()
-                imgui.text(message)
+# FC: Make sure idiotic long paths neatly wrap
+                if message.find('Launched') > -1:
+                    start_x = imgui.get_cursor_pos_x() + imgui.calc_text_size('Launched "').x
+                else:
+# FC: Print "from"and "to" names on separate lines
+                    start_x = imgui.get_cursor_pos_x() + imgui.calc_text_size('Name changed from').x
+                avail = imgui.get_content_region_available()
+                width = imgui.calc_text_size(message).x
+                if width > avail.x:
+                    wrap_pos = utils.find_wrap_pos(message, True)
+                    message_pt1 = message[0:wrap_pos+1]
+                    imgui.text(message_pt1)
+                    message_pt2 = message[wrap_pos+1:]
+                    imgui.set_cursor_pos_x(start_x)
+                    imgui.text(message_pt2)
+                else:
+                    imgui.text(message)
                 return
             # Draw icon
             imgui.dummy(0, 0)
@@ -2042,20 +2196,56 @@ class MainGUI():
             cur = imgui.get_cursor_screen_pos()
             imgui.text_colored(icon, *globals.settings.style_accent)
             icon_size = imgui.get_item_rect_size()
+# FC: Put a bit of space between popup edge and icon
+            padding = icon_size.x + 5
             icon_coordinates.append((cur.x, cur.y, cur.x + icon_size.x, cur.y + icon_size.y))
             # Draw timestamp
             imgui.same_line(spacing=self.scaled(15))
+# FC: Calc size and position for centered display of timestamp
+            avail = imgui.get_content_region_available()
+            text = date.strftime(globals.settings.timestamp_format)
+            width = imgui.calc_text_size(text).x
+            imgui.set_cursor_pos_x((avail.x - width + imgui.style.scrollbar_size) / 2 + padding)
             timestamp_pos = imgui.get_cursor_screen_pos()
-            imgui.text_disabled(date.strftime(globals.settings.datestamp_format))
+# FC: Again use slightly dimmer color
+            imgui.push_style_color(imgui.COLOR_TEXT, *globals.settings.style_text_dim)
+            imgui.text(text)
+            imgui.pop_style_color()
             timestamp_size = imgui.get_item_rect_size()
-            self.draw_hover_text(date.strftime(globals.settings.timestamp_format), text=None)
+# FC: pre-calculate base x, y position and size
+            timestamp_pos_x = timestamp_pos.x + timestamp_size.x / 2
+            timestamp_pos_y = timestamp_pos.y + timestamp_size.y
+# FC: Suppress tooltip for date-time as it already shows how I want
+#            self.draw_hover_text(date.strftime(globals.settings.timestamp_format), text=None)
             # Draw message
-            message_pos = (timestamp_pos.x, timestamp_pos.y + timestamp_size.y - self.scaled(2))
-            imgui.set_cursor_screen_pos(message_pos)
-            imgui.text(message)
-            message_size = imgui.get_item_rect_size()
+# FC: Calc size and position for centered display of message and wrap messages longer than available width
+            width = imgui.calc_text_size(message).x
+            if width > avail.x:
+                wrap_pos = utils.find_wrap_pos(message, False)
+                message_pt1 = message[0:wrap_pos+1]
+                message_pt2 = message[wrap_pos+1:]
+                width1 = imgui.calc_text_size(message_pt1).x
+                width2 = imgui.calc_text_size(message_pt2).x
+                message_pos1 = (timestamp_pos_x - width1 / 2, timestamp_pos_y - self.scaled(2))
+                message_pos2 = (timestamp_pos_x - width2 / 2, timestamp_pos_y * 2 - self.scaled(2))
+                imgui.set_cursor_screen_pos(message_pos1)
+                imgui.text(message_pt1)
+                message_size = imgui.get_item_rect_size()
+                imgui.set_cursor_screen_pos(message_pos2)
+                imgui.text(message_pt2)
+                message_pos = (min(message_pos1[0], message_pos2[0]), max(message_pos1[1], message_pos2[1]))
+                if width2 > width1:
+                    message_size = imgui.get_item_rect_size()
+            else:
+                message_pos = (timestamp_pos_x - width / 2, timestamp_pos_y - self.scaled(2))
+                imgui.set_cursor_screen_pos(message_pos)
+                imgui.text(message)
+                message_size = imgui.get_item_rect_size()
+
+# FC: Also need to account for when timestamp is longer than the message
+            start_x = timestamp_pos.x if timestamp_size.x > message_size.x else message_pos[0]
             final_x = timestamp_pos.x + timestamp_size.x if timestamp_size.x > message_size.x else message_pos[0] + message_size.x
-            text_coordinates.append((timestamp_pos.x, timestamp_pos.y, final_x, message_pos[1] + message_size.y))
+            text_coordinates.append((start_x, timestamp_pos.y, final_x, message_pos[1] + message_size.y))
             if spacing:
                 imgui.dummy(0, self.scaled(10))
 
@@ -2074,8 +2264,12 @@ class MainGUI():
 
         # Draw timeline primitives
         rounding = self.scaled(globals.settings.style_corner_radius)
+# FC: Add connector line between icon rect and event rect, [loopcnt][0] contains left x of event rect
+        loopcnt = 0
         for x1, y1, x2, y2 in icon_coordinates:
             dl.add_rect(x1 - padding, y1 - padding, x2 + padding, y2 + padding, color, rounding=rounding, thickness=thickness)
+            dl.add_line(x2 + padding, y1 + (y2 - y1) / 2, text_coordinates[loopcnt][0] - padding - thickness, y1 + (y2 - y1) / 2, color, thickness=thickness)
+            loopcnt += 1
             if prev_rect:
                 dl.add_line((prev_rect[0] + prev_rect[2]) / 2, prev_rect[3] + padding, (x1 + x2) / 2, y1 - padding, color, thickness=thickness)
             prev_rect = (x1, y1, x2, y2)
@@ -2137,21 +2331,22 @@ class MainGUI():
                 imgui.pop_font()
 
                 imgui.spacing()
-                imgui.text_disabled("Update date: ")
-                imgui.same_line()
-                imgui.text(game.last_updated.display)
-
+# FC: Change order of Tab and Last Update date
                 if Tab.instances:
                     imgui.spacing()
                     imgui.text_disabled("Tab: ")
                     imgui.same_line()
                     self.draw_game_tab_widget(game)
+#                imgui.spacing()
+                imgui.text_disabled("Update date: ")
+                imgui.same_line()
+                imgui.text(game.last_updated.display)
 
                 for attr in ("name", "version"):
                     old_val = getattr(old_game, attr) or "Unknown"
                     new_val = getattr(game, attr) or "Unknown"
                     if new_val != old_val:
-                        imgui.spacing()
+#                        imgui.spacing()
                         imgui.text_disabled(f"{attr.title()}: ")
                         imgui.same_line()
                         # Hack: get fast line wrapping in ImGui but draw arrow in other color:
@@ -2167,7 +2362,7 @@ class MainGUI():
                         imgui.text(f"{old_val}  {em_space}  {new_val}")
 
                 if game.status is not old_game.status:
-                    imgui.spacing()
+#                    imgui.spacing()
                     imgui.text_disabled("Status: ")
                     imgui.same_line()
                     imgui.text(old_game.status.name)
@@ -2183,7 +2378,7 @@ class MainGUI():
                     imgui.same_line()
                     self.draw_status_widget(game.status)
 
-                imgui.spacing()
+#                imgui.spacing()
                 self.draw_game_open_thread_button(game, f"{icons.open_in_new} Thread")
                 imgui.same_line()
                 self.draw_game_copy_link_button(game, f"{icons.content_copy} Link")
@@ -2192,7 +2387,9 @@ class MainGUI():
 
                 imgui.end_group()
                 height = imgui.get_item_rect_size().y + imgui.style.item_spacing.y
-                crop = game.image.crop_to_ratio(width / height, fit=globals.settings.fit_images)
+#                crop = game.image.crop_to_ratio(width / height, fit=globals.settings.fit_images)
+# FC: Don't crop images in updates popup
+                crop = game.image.crop_to_ratio(width / height, fit=1)
                 imgui.set_cursor_pos((img_pos_x, img_pos_y))
                 game.image.render(width, height, *crop, rounding=self.scaled(globals.settings.style_corner_radius))
 
@@ -2304,8 +2501,26 @@ class MainGUI():
         imgui.set_cursor_pos(pos)
         imgui.dummy(width, height)
 
-    def draw_game_info_popup(self, game: Game, carousel_ids: list = None, popup_uuid: str = ""):
+    def get_kanban_carousel_ids(self):
+        tab_games_ids = self.show_games_ids[self.current_tab].copy()
+        carousel_ids = []
+        # first find games with one or more labels.
+        for label in Label.instances:
+            for id in tab_games_ids:
+                if label in globals.games[id].labels:
+                    carousel_ids.append(id)
+        # then find the games without a label
+        for id in tab_games_ids:
+            if not globals.games[id].labels:
+                carousel_ids.append(id)
+        return carousel_ids
+
+    def draw_game_info_popup(self, game: Game, carousel_ids: list = None, carousel_idx: int = None, popup_uuid: str = ""):
+        # Track which game (and which carousel position) is currently shown in
+        # the info popup so the kanban view can highlight just that one cell.
+        self.info_popup_game_id = game.id
         def popup_content():
+            nonlocal carousel_ids, carousel_idx
             # Image
             fullscreen_viewer_start = False
             imgui.indent(imgui.style.scrollbar_size)
@@ -2316,10 +2531,11 @@ class MainGUI():
                 avail = avail._replace(x=avail.x - imgui.style.scrollbar_size)
             close_image = False
             zoom_popup = False
-            rounding = self.scaled(globals.settings.style_corner_radius)
+            rounding = 0 # self.scaled(globals.settings.style_corner_radius)
             out_height = (min(avail.y, self.scaled(690)) * self.scaled(0.4)) or 1
             out_width = avail.x or 1
             if image.error:
+                out_height = (min(avail.y, 50)) or 1
                 self.draw_game_image_error(game, image, out_width, out_height)
             else:
                 aspect_ratio = image.height / image.width
@@ -2379,6 +2595,8 @@ class MainGUI():
                             game.set_image_sync(pathlib.Path(selected).read_bytes())
                     utils.push_popup(filepicker.FilePicker(
                         title=f"Select or drop image for {game.name}",
+# FC: FilePicker Highlight
+                        picker_type=filepicker.PickerType.Media,
                         callback=select_callback
                     ).tick)
                 if imgui.selectable(f"{icons.trash_can_outline} Reset image", False)[0]:
@@ -2429,7 +2647,8 @@ class MainGUI():
                 cover_loaded = game.image.error or game.image.texture_id != imagehelper.dummy_texture_id()
                 if cover_loaded:
                     # Once cover is loaded, start loading previews in order and keep the loaded
-                    for preview in reversed(game.preview_images):
+# FC: load previews from left to right in the preview strip.
+                    for preview in game.preview_images:
                         if preview is not None:
                             _ = preview.texture_id
                 first = True
@@ -2521,7 +2740,10 @@ class MainGUI():
                                 diff = -1 if self.scroll_energy > 0 else +1
                                 self.scroll_energy = 0.0
                             else:
-                                diff = -1 if imgui.io.mouse_wheel > 0 else +1
+                                if imgui.io.mouse_wheel_horizontal:
+                                    diff = -1 if imgui.io.mouse_wheel_horizontal > 0 else +1
+                                else:
+                                    diff = -1 if imgui.io.mouse_wheel > 0 else +1
                             cycle_fullscreen_viewer(diff)
                         if int(imgui.get_scroll_y() - 1.0):
                             if globals.settings.scroll_smooth:
@@ -2612,10 +2834,11 @@ class MainGUI():
             imgui.same_line()
             self.draw_game_id_button(game, f"{icons.pound} ID")
             imgui.same_line()
-            self.draw_game_finished_checkbox(game, f"{icons.flag_checkered} Finished")
+# FC: Swap Installed and Finished label and checkboxes
+            self.draw_game_installed_checkbox(game, f"{icons.download} Installed")
             _10 = self.scaled(10)
             imgui.same_line(spacing=_10)
-            self.draw_game_installed_checkbox(game, f"{icons.download} Installed")
+            self.draw_game_finished_checkbox(game, f"{icons.flag_checkered} Finished")
             imgui.same_line(spacing=_10)
             self.draw_game_recheck_button(game, f"{icons.reload_alert} Recheck")
             imgui.same_line()
@@ -2629,6 +2852,19 @@ class MainGUI():
             if imgui.begin_table(f"###details", column=2, outer_size_width=avail.x):
                 imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
                 imgui.table_setup_column("", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+
+                imgui.table_next_row()
+                
+# FC: Put Type and Tab widgets in top
+                imgui.table_next_column()
+                imgui.text_disabled("Type:")
+                imgui.same_line()
+                self.draw_type_widget(game.type)
+
+                imgui.table_next_column()
+                imgui.text_disabled("Tab:")
+                imgui.same_line()
+                self.draw_game_tab_widget(game)
 
                 imgui.table_next_row()
 
@@ -2651,8 +2887,14 @@ class MainGUI():
                 imgui.table_next_row()
 
                 imgui.table_next_column()
+# FC: Vertically align iconbutton and text
+                imgui.align_text_to_frame_padding()
                 imgui.text_disabled("Developer:")
                 imgui.same_line()
+# FC: Call webpage showing all games by this developer
+                if not game.custom:
+                    self.draw_game_open_devgames_button(game, f"{icons.open_in_new}")
+                    imgui.same_line()
                 imgui.text(game.developer)
 
                 imgui.table_next_column()
@@ -2673,10 +2915,11 @@ class MainGUI():
                 imgui.text_disabled("Last Launched:")
                 imgui.same_line()
                 imgui.text(game.last_launched.display or "Never")
-                if imgui.is_item_clicked():
-                    game.last_launched = time.time()
-                    game.add_timeline_event(TimelineEventType.GameLaunched, "date set manually")
-                self.draw_hover_text("Click to set as launched right now!", text=None)
+                if game.finished != (game.installed or game.version):
+                    if imgui.is_item_clicked():
+                        game.last_launched = time.time()
+                        game.add_timeline_event(TimelineEventType.GameLaunched, "date set manually")
+                    self.draw_hover_text("Click to set as launched right now!", text=None)
 
                 imgui.table_next_row()
 
@@ -2695,18 +2938,29 @@ class MainGUI():
                 imgui.table_next_row()
 
                 imgui.table_next_column()
-                imgui.text_disabled("Type:")
-                imgui.same_line()
-                self.draw_type_widget(game.type)
-
-                imgui.table_next_column()
                 imgui.text_disabled("Personal Rating:")
                 imgui.same_line()
                 self.draw_game_rating_widget(game)
 
+                imgui.table_next_column()
+                imgui.begin_group()
+                imgui.align_text_to_frame_padding()
+                imgui.text_disabled("Labels:")
+                imgui.same_line()
+                if game.labels:
+                    self.draw_game_labels_widget(game)
+                else:
+                    imgui.button("Right click to add")
+                imgui.end_group()
+                labels_end_y = imgui.get_cursor_pos_y()
+                if imgui.begin_popup_context_item(f"###{game.id}_context_labels"):
+                    self.draw_game_labels_select_widget(game)
+                    imgui.end_popup()
+
                 imgui.table_next_row()
 
-                imgui.table_next_column()
+                # Draw labels on right first, so executables on left can then overflow below to right
+                imgui.table_set_column_index(1)
                 imgui.align_text_to_frame_padding()
                 imgui.text_disabled("Exe Wrapper:")
                 imgui.same_line()
@@ -2735,29 +2989,6 @@ class MainGUI():
                     text=None,
                 )
 
-                imgui.table_next_column()
-                imgui.text_disabled("Tab:")
-                imgui.same_line()
-                self.draw_game_tab_widget(game)
-
-                imgui.table_next_row()
-
-                # Draw labels on right first, so executables on left can then overflow below to right
-                imgui.table_set_column_index(1)
-                imgui.begin_group()
-                imgui.align_text_to_frame_padding()
-                imgui.text_disabled("Labels:")
-                imgui.same_line()
-                if game.labels:
-                    self.draw_game_labels_widget(game)
-                else:
-                    imgui.button("Right click to add")
-                imgui.end_group()
-                labels_end_y = imgui.get_cursor_pos_y()
-                if imgui.begin_popup_context_item(f"###{game.id}_context_labels"):
-                    self.draw_game_labels_select_widget(game)
-                    imgui.end_popup()
-
                 imgui.table_set_column_index(0)
                 imgui.align_text_to_frame_padding()
                 imgui.text_disabled("Executables:")
@@ -2780,7 +3011,7 @@ class MainGUI():
                     if imgui.button(icons.folder_remove_outline):
                         game.remove_executable(executable)
                     imgui.same_line()
-                    # Hack: make ImGui wrap arbitrarily by using an idegraphic space (U+3000) with 0-width font
+                    # Hack: make ImGui wrap arbitrarily by using an ideographic space (U+3000) with 0-width font
                     ig_space = "　"
                     imgui.text(executable.replace("/", f"/{ig_space}").replace("\\", f"\\{ig_space}"))
 
@@ -2815,8 +3046,10 @@ class MainGUI():
                     else:
                         imgui.text_disabled("Either this game doesn't have a description, or the thread is not formatted properly!")
                     imgui.end_tab_item()
-
-                if not game.custom and imgui.begin_tab_item(icons.tray_arrow_down + " Downloads###downloads")[0]:
+# FC: Use same formatting as in other places
+                if not game.custom and imgui.begin_tab_item((
+                    icons.tray_arrow_down
+                ) + " Downloads###downloads")[0]:
                     imgui.spacing()
                     imgui.text("RPDL Torrents:")
                     imgui.same_line()
@@ -2929,7 +3162,9 @@ class MainGUI():
                             imgui.tree_pop()
                     imgui.end_tab_item()
 
-                if imgui.begin_tab_item(icons.timeline_clock_outline + " Timeline###timeline")[0]:
+# FC: Use same formatting as in other places
+                if imgui.begin_tab_item((icons.timeline_clock_outline
+                ) + " Timeline###timeline")[0]:
                     imgui.spacing()
                     self.draw_game_timeline_widget(game)
                     imgui.end_tab_item()
@@ -2939,10 +3174,23 @@ class MainGUI():
                     icons.puzzle_remove_outline
                 ) + " Custom###custom")[0]:
                     if game.custom:
+
+                        old_name = game.name
+                        old_developer = game.developer
+                        old_type = game.type
+                        old_version = game.version
+                        old_status = game.status
+                        old_tags = game.tags
+                        old_score = game.score
+                        old_votes = game.votes
+
                         imgui.text(
                             "This is a custom game. You can edit all its details below (except downloads). "
                             "If you wish to convert it back to a F95zone game, then make sure to fill the "
-                            "game url with a valid F95zone thread url before pressing the button below."
+                            "game url with a valid F95zone thread url before pressing the button below.\n\n"
+                            "NOTE! Due to how the database is updated, you need to click outside any input "
+                            "fields to signal that you finished editing in order for changes to be applied. "
+                            "This does not apply to checkboxes, right-click, date of drop-down fields"
                         )
                         if imgui.button(f"{icons.puzzle_remove} Convert to F95zone game"):
                             callbacks.convert_custom_to_f95zone(game)
@@ -2955,7 +3203,8 @@ class MainGUI():
                         imgui.text("URL:")
                         imgui.same_line()
                         changed, value = imgui.input_text("###url", game.url)
-                        if changed:
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.url = value
                         if imgui.begin_popup_context_item("###url_context"):
                             utils.text_context(game, "url", no_icons=True)
@@ -2966,8 +3215,9 @@ class MainGUI():
                         imgui.text("Name:")
                         imgui.same_line()
                         imgui.set_next_item_width(imgui.get_content_region_available_width() - self.scaled(120))
-                        changed, value = imgui.input_text("###name", game.name)
-                        if changed:
+                        changed, value = imgui.input_text("###name", game.name) #, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.name = value
                         if imgui.begin_popup_context_item("###name_context"):
                             utils.text_context(game, "name", no_icons=True)
@@ -2975,8 +3225,9 @@ class MainGUI():
                         imgui.same_line(spacing=imgui.style.item_spacing.x * 2)
                         imgui.text("Score:")
                         imgui.same_line()
-                        changed, value = imgui.drag_float("###score", game.score, change_speed=0.01, min_value=0, max_value=5, format="%.1f/5")
-                        if changed:
+                        changed, value = imgui.drag_float("###score", game.score, change_speed=0.01, min_value=0, max_value=5, format="%.1f/5") #, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.score = value
 
                         imgui.set_cursor_pos_x(pos_x - imgui.calc_text_size("Version:").x)
@@ -2984,8 +3235,9 @@ class MainGUI():
                         imgui.text("Version:")
                         imgui.same_line()
                         imgui.set_next_item_width(imgui.get_content_region_available_width() / 3.5)
-                        changed, value = imgui.input_text("###version", game.version)
-                        if changed:
+                        changed, value = imgui.input_text("###version", game.version) #, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.version = value or "N/A"
                         if imgui.begin_popup_context_item("###version_context"):
                             utils.text_context(game, "version", no_icons=True)
@@ -2994,8 +3246,9 @@ class MainGUI():
                         imgui.text("Developer:")
                         imgui.same_line()
                         imgui.set_next_item_width(imgui.get_content_region_available_width() / 2.1)
-                        changed, value = imgui.input_text("###developer", game.developer)
-                        if changed:
+                        changed, value = imgui.input_text("###developer", game.developer) #, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.developer = value
                         if imgui.begin_popup_context_item("###developer_context"):
                             utils.text_context(game, "developer", no_icons=True)
@@ -3077,7 +3330,8 @@ class MainGUI():
                         imgui.text("Description:")
                         imgui.same_line()
                         changed, value = imgui.input_text_multiline("###description", value=game.description)
-                        if changed:
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.description = value
                         if imgui.begin_popup_context_item("###description_context"):
                             utils.text_context(game, "description")
@@ -3088,13 +3342,51 @@ class MainGUI():
                         imgui.text("Changelog:")
                         imgui.same_line()
                         changed, value = imgui.input_text_multiline("###changelog", value=game.changelog)
-                        if changed:
+#                        if changed:
+                        if imgui.is_item_deactivated():
                             game.changelog = value
                         if imgui.begin_popup_context_item("###changelog_context"):
                             utils.text_context(game, "changelog")
                             imgui.end_popup()
 
                         imgui.pop_item_width()
+
+                        changed_name = game.name != old_name and "Custom game" not in old_name
+                        changed_developer = game.developer != old_developer and old_developer != ""
+                        changed_type = game.type != old_type and old_type != Type.Unchecked
+                        changed_version = game.version != old_version and old_version != "Unchecked"
+                        changed_status = game.status != old_status and old_status != Status.Unchecked
+                        changed_tags = game.tags != old_tags
+                        changed_score = game.score != old_score and old_score != 0
+#                        changed_votes = game.votes != old_votes
+
+                        if changed_name:
+                            game.add_timeline_event(TimelineEventType.ChangedName, old_name, game.name)
+
+                        if changed_developer:
+                            game.add_timeline_event(TimelineEventType.ChangedDeveloper, old_developer, game.developer)
+
+                        if changed_type:
+                            game.add_timeline_event(TimelineEventType.ChangedType, old_type.name, game.type.name)
+
+                        if changed_version:
+                            game.add_timeline_event(TimelineEventType.ChangedVersion, old_version, game.version)
+
+                        if changed_status:
+                            game.add_timeline_event(TimelineEventType.ChangedStatus, old_status.name, game.status.name)
+
+                        if changed_tags:
+                            if difference := [tag.text for tag in old_tags if tag not in game.tags]:
+                                game.add_timeline_event(TimelineEventType.TagsRemoved, ", ".join(difference))
+                            if difference := [tag.text for tag in game.tags if tag not in old_tags]:
+                                game.add_timeline_event(TimelineEventType.TagsAdded, ", ".join(difference))
+
+                        if changed_score:
+                            if game.score < old_score:
+                                game.add_timeline_event(TimelineEventType.ScoreIncreased, old_score, old_votes, game.score, game.votes)
+                            else:
+                                game.add_timeline_event(TimelineEventType.ScoreDecreased, old_score, old_votes, game.score, game.votes)
+
                     else:
                         imgui.text(
                             "Here you have the option to convert this game to a custom game. Custom games are not checked for updates and become untied from F95zone. "
@@ -3130,23 +3422,30 @@ class MainGUI():
                     clicked_left = mouse_clicked and x1 <= mouse_pos.x <= x1 + text_size.x and y_ok
                     clicked_right = mouse_clicked and x2 <= mouse_pos.x <= x2 + text_size.x and y_ok
                     imgui.pop_font()
-                    idx = carousel_ids.index(game.id)
+# FC: Allows More Info to follow Kanban order in Kanban view
+                    if globals.settings.display_mode is DisplayMode.kanban:
+                        carousel_ids = self.get_kanban_carousel_ids()
+                    idx = carousel_idx if carousel_idx is not None else carousel_ids.index(game.id)
+                    next_idx = None
                     if imgui.is_key_pressed(glfw.KEY_LEFT, repeat=True) or clicked_left:
                         idx -= 1
                         if idx == -1:
                             idx = len(carousel_ids) - 1
                         change_id = carousel_ids[idx]
+                        next_idx = idx
                     if imgui.is_key_pressed(glfw.KEY_RIGHT, repeat=True) or clicked_right:
                         idx += 1
                         if idx == len(carousel_ids):
                             idx = 0
                         change_id = carousel_ids[idx]
+                        next_idx = idx
             if change_id is not None:
                 # Swiping to another game closes this popup's gallery. Keep
                 # the downloaded files, but release decoded/GPU image data.
                 game.cancel_preview_loading()
                 game.unload_previews()
-                utils.push_popup(self.draw_game_info_popup, globals.games[change_id], carousel_ids).uuid = popup_uuid
+                self.info_popup_game_id = change_id
+                utils.push_popup(self.draw_game_info_popup, globals.games[change_id], carousel_ids, next_idx).uuid = popup_uuid
                 return True
             elif not fullscreen_viewer_closed and utils.close_weak_popup():
                 return True
@@ -3346,6 +3645,8 @@ class MainGUI():
         else:
             save_new_tab = True
         new_tab = None
+# FC: Slightly smaller font on tabs
+        imgui.push_font(imgui.fonts.tabs)
         if Tab.instances and not (globals.settings.filter_all_tabs and self.filtering):
             if imgui.begin_tab_bar(
                 f"###tabbar_{','.join(str(tab.id) for tab in Tab.instances)}",
@@ -3365,10 +3666,16 @@ class MainGUI():
                     if hide and not count:
                         continue
                     if tab.color:
-                        imgui.push_style_color(imgui.COLOR_TAB, *tab.color[:3], 0.5)
-                        imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *tab.color)
-                        imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *tab.color)
-                        imgui.push_style_color(imgui.COLOR_TEXT, *colors.foreground_color(tab.color))
+# FC: Instead of the tab background, color the text.
+#                        imgui.push_style_color(imgui.COLOR_TAB, *tab.color[:3], 0.5)
+#                        imgui.push_style_color(imgui.COLOR_TAB_ACTIVE, *tab.color)
+#                        imgui.push_style_color(imgui.COLOR_TAB_HOVERED, *tab.color)
+#                        imgui.push_style_color(imgui.COLOR_TEXT, *colors.foreground_color(tab.color))
+# FC: Show the selected tab text color as normal text instead of colored
+                        if tab is display_tab:
+                            imgui.push_style_color(imgui.COLOR_TEXT, *globals.settings.style_text)
+                        else:
+                            imgui.push_style_color(imgui.COLOR_TEXT, *tab.color[:3], 1.0)
                     if imgui.begin_tab_item(
                         f"{tab.icon} {tab.name or 'New Tab'} ({count})###tab_{tab.id}",
                         flags=imgui.TAB_ITEM_SET_SELECTED if select_tab and tab is display_tab else 0
@@ -3376,7 +3683,9 @@ class MainGUI():
                         new_tab = tab
                         imgui.end_tab_item()
                     if tab.color:
-                        imgui.pop_style_color(4)
+# FC: Change pop_style_color to match the number of push_style_color's
+#                        imgui.pop_style_color(4)
+                        imgui.pop_style_color(1)
                     if self.dragging_tab is tab and imgui.is_mouse_released():
                         self.dragging_tab = None
                     elif imgui.is_item_active() or self.dragging_tab is tab:
@@ -3469,6 +3778,8 @@ class MainGUI():
             self.recalculate_ids = True
             globals.settings.display_tab = new_tab
             async_thread.run(db.update_settings("display_tab"))
+# FC: Don't forget to pop the used reduced sized font
+        imgui.pop_font()
 
     def calculate_ids(self, table_id: str, sorts: imgui.core._ImGuiTableSortSpecs):
         manual_sort = cols.manual_sort.enabled
@@ -3565,28 +3876,32 @@ class MainGUI():
             if not manual_sort:
                 for sort_spec in self.sorts[table_id]:
                     match sort_spec.index:
+# FC: Check columns in displayed order
                         case cols.type.index:
                             key = lambda id: globals.games[id].type.name
-                        case cols.developer.index:
-                            key = lambda id: globals.games[id].developer.lower()
-                        case cols.playtime.index:
-                            key = lambda id: - globals.games[id].playtime
-                        case cols.last_updated.index:
-                            key = lambda id: - globals.games[id].last_updated.value
-                        case cols.last_launched.index:
-                            key = lambda id: - globals.games[id].last_launched.value
                         case cols.added_on.index:
                             key = lambda id: - globals.games[id].added_on.value
-                        case cols.finished.index:
-                            key = lambda id: 2 if not globals.games[id].finished else 1 if globals.games[id].finished == (globals.games[id].installed or globals.games[id].version) else 0
+                        case cols.last_updated.index:
+                            key = lambda id: - globals.games[id].last_updated.value
                         case cols.installed.index:
                             key = lambda id: 2 if not globals.games[id].installed else 1 if globals.games[id].installed == globals.games[id].version else 0
-                        case cols.rating.index:
-                            key = lambda id: - globals.games[id].rating
-                        case cols.notes.index:
-                            key = lambda id: globals.games[id].notes.lower() or "z"
+                        case cols.last_launched.index:
+                            key = lambda id: - globals.games[id].last_launched.value
+                        case cols.finished.index:
+                            key = lambda id: 2 if not globals.games[id].finished else 1 if globals.games[id].finished == (globals.games[id].installed or globals.games[id].version) else 0
+                        case cols.playtime.index:
+                            key = lambda id: - globals.games[id].playtime
                         case cols.status_standalone.index:
                             key = lambda id: globals.games[id].status.value
+# FC: Allow sorting on last_status_change
+                        case cols.last_status_change.index:
+                            key = lambda id: - globals.games[id].last_status_change.value
+                        case cols.developer.index:
+                            key = lambda id: globals.games[id].developer.lower()
+                        case cols.notes.index:
+                            key = lambda id: globals.games[id].notes.lower() or "z"
+                        case cols.rating.index:
+                            key = lambda id: - globals.games[id].rating
                         case cols.score.index:
                             if globals.settings.weighted_score:
                                 key = lambda id: - utils.bayesian_average(globals.games[id].score, globals.games[id].votes)
@@ -3613,7 +3928,7 @@ class MainGUI():
         else:
             tab_games_ids = self.show_games_ids[self.current_tab]
 
-    def handle_game_hitbox_events(self, game: Game, drag_drop: bool = False):
+    def handle_game_hitbox_events(self, game: Game, drag_drop: bool = False, carousel_idx: int = None):
         manual_sort = cols.manual_sort.enabled
         if imgui.is_item_hovered(imgui.HOVERED_ALLOW_WHEN_BLOCKED_BY_ACTIVE_ITEM):
             # Hover = image on refresh button
@@ -3622,6 +3937,8 @@ class MainGUI():
                 self.game_hitbox_click = True
             if self.game_hitbox_click and not imgui.is_mouse_down():
                 self.game_hitbox_click = False
+                if imgui.is_key_down(glfw.KEY_LEFT_SHIFT) or imgui.is_key_down(glfw.KEY_LEFT_CONTROL):
+                    self.info_popup_game_id = None
                 if imgui.is_key_down(glfw.KEY_LEFT_SHIFT):
                     # Shift + Left click = multi select
                     if self.selected_games_count and self.last_selected_game.selected:
@@ -3643,7 +3960,36 @@ class MainGUI():
                             game.selected = False
                     else:
                         # Left click = open game info popup
-                        utils.push_popup(self.draw_game_info_popup, game, self.show_games_ids[self.current_tab].copy())
+# FC: Allows More Info to follow Kanban order in Kanban view
+                        tab_games_ids = self.show_games_ids[self.current_tab]
+                        if globals.settings.display_mode is DisplayMode.kanban:
+                            # Populate the carousel matching the kanban view order:
+                            kanban_games_ids = []
+                            # kanban_labels tracks which label column each entry belongs to
+                            kanban_labels = []
+                            # first find games with one or more labels.
+                            for label in Label.instances:
+                                for id in tab_games_ids:
+                                    if label in globals.games[id].labels:
+                                        kanban_games_ids.append(id)
+                                        kanban_labels.append(label)
+                            # then find the games without a label
+                            for id in tab_games_ids:
+                                if not globals.games[id].labels:
+                                    kanban_games_ids.append(id)
+                                    kanban_labels.append(None)
+                            utils.push_popup(self.draw_game_info_popup, game, kanban_games_ids, carousel_idx)
+                        else:
+                            utils.push_popup(self.draw_game_info_popup, game, tab_games_ids.copy())
+                            """
+                            kanban_games_ids = tab_games_ids.copy()
+
+                            # List/Grid order matches tab_games_ids order.
+                            try:
+                                carousel_idx = kanban_games_ids.index(game.id)
+                            except ValueError:
+                                carousel_idx = 0
+                            """
         # Left click drag = swap if in manual sort mode
         if imgui.begin_drag_drop_source(flags=self.game_hitbox_drag_drop_flags):
             self.game_hitbox_click = False
@@ -3682,6 +4028,86 @@ class MainGUI():
     def games_table_id(self):
         tab_id = self.current_tab.id if self.current_tab else -1
         return f"###game_list{tab_id if globals.settings.independent_tab_views else ''}"
+
+# FC: Slideshow
+    def draw_slideshow_image(self, id: int):
+        game = globals.games[id]
+        image = game.image
+        name = game.name
+        slideshow_id = "###slideshow"
+        size = imgui.io.display_size
+        scale = 1.0
+        # is this actually needed? Doesn't look like it.
+        win_flags = 0
+        if not imgui.is_popup_open(slideshow_id):
+            imgui.open_popup(slideshow_id)
+
+# FC: Relative to application window
+        imgui.set_next_window_position(0, 0)
+        imgui.set_next_window_size(size.x, size.y)
+        imgui.begin_popup(slideshow_id, flags=win_flags)
+        imgui.push_style_var(imgui.STYLE_WINDOW_BORDERSIZE, 0)
+        imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND, *imgui.style.colors[imgui.COLOR_WINDOW_BACKGROUND])
+        aspect_ratio = image.height / image.width
+        if aspect_ratio > size.y / size.x:
+            height = size.y
+            width = height / aspect_ratio
+        else:
+            width = size.x
+            height = width * aspect_ratio
+        x = int((size.x - width) / 2)
+        y = int((size.y - height) / 2)
+        fg_draw_list = imgui.get_foreground_draw_list()
+        fg_draw_list.add_image(image.texture_id, (x, y), (x + width, y + height))
+# FC: Draw outlined name of the game so it's visible on lighter backgrounds
+        offsets = [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (2, -2), (-2, 2), (2, 2), (-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
+        for offset_x, offset_y in offsets:
+            fg_draw_list.add_text(10 + offset_x, 10 + offset_y, imgui.get_color_u32_rgba(*globals.settings.style_alt_bg), name + ' [' + str(id) + ']')
+        fg_draw_list.add_text(10, 10, imgui.get_color_u32_rgba(*globals.settings.style_text), name + ' [' + str(id) + ']')
+
+        imgui.pop_style_color()
+        imgui.pop_style_var()
+        imgui.end_popup()
+
+    def draw_slideshow(self):
+#        self.idle_timer.stop()
+        if globals.settings.slideshow_tab_only:
+            self.slideshow_images = self.show_games_ids[self.current_tab]
+        else:
+            self.slideshow_images = [game.id for game in globals.games.values()]
+        if not self.shuffled and globals.settings.slideshow_random_order:
+            random.shuffle(self.slideshow_images)
+            self.shuffled = True
+
+        # substract 1 from len since lists are zero based
+        self.slideshow_image_count = len(self.slideshow_images) - 1
+        # default is -1 so first sequential image is at index 0
+        self.slideshow_image_index = min(self.slideshow_image_index, self.slideshow_image_count)
+        # store time slideshow was started
+        now = time.monotonic()
+        # self.slideshow_time_prev defaults to 0 so the first image shows immediately.
+        if (self.slideshow_prev_time == 0 or (now - self.slideshow_prev_time) > globals.settings.slideshow_interval):
+            self.slideshow_prev_time = now
+            if self.slideshow_image_index < self.slideshow_image_count:
+                self.slideshow_image_index += 1
+            else:
+                self.slideshow_image_index = 0
+            # Loop just in case there's two or more consecutive entries in the list without an image
+            # and somehow they still slip through some times
+            while globals.games[self.slideshow_images[self.slideshow_image_index]].image.error:
+                self.slideshow_image_index += 1
+                if self.slideshow_image_index > self.slideshow_image_count:
+                    self.slideshow_image_index = 0
+        self.draw_slideshow_image(self.slideshow_images[self.slideshow_image_index])
+        if imgui.is_key_pressed(glfw.KEY_ESCAPE):
+            self.shuffled = False
+            imgui.close_current_popup()
+            self.slideshow_prev_time = 0
+            globals.settings.slideshow_start_playing = False
+            async_thread.run(db.update_settings("slideshow_start_playing"))
+#            self.idle_timer = idletimer.IdleTimer(timeout_seconds=900, on_idle_callback=self.slideshow_callback)
+#            self.idle_timer = idletimer.IdleTimer(timeout_seconds=60, on_idle_callback=self.slideshow_callback)
+#            self.idle_timer.start()
 
     def draw_games_list(self):
         table_id = self.games_table_id()
@@ -3737,11 +4163,39 @@ class MainGUI():
                     if not column.enabled or column.ghost:
                         continue
                     imgui.table_set_column_index(column.index)
+# FC: Draw columns in my preferred order as default layout
+# FC: Draw date columns in logical order and put corresponding actions next to them
                     match column.index:
-                        case cols.play_button.index:
-                            self.draw_game_play_button(game, cols.play_button.name[0])
                         case cols.type.index:
                             self.draw_type_widget(game.type, align=True)
+                        case cols.added_on.index:
+                            imgui.push_font(imgui.fonts.mono)
+                            imgui.text(game.added_on.display)
+                            imgui.pop_font()
+                        case cols.open_folder.index:
+                            self.draw_game_open_folder_button(game, cols.open_folder.name[0])
+                        case cols.last_updated.index:
+                            imgui.push_font(imgui.fonts.mono)
+                            imgui.text(game.last_updated.display or "Unknown")
+                            imgui.pop_font()
+                        case cols.installed.index:
+                            self.draw_game_installed_checkbox(game)
+                        case cols.last_launched.index:
+                            imgui.push_font(imgui.fonts.mono)
+                            imgui.text(game.last_launched.display or "Never")
+                            imgui.pop_font()
+                        case cols.finished.index:
+                            self.draw_game_finished_checkbox(game)
+                        case cols.playtime.index:
+                            imgui.push_font(imgui.fonts.mono)
+                            imgui.text(game.playtime_display or "None")
+                            imgui.pop_font()
+                        case cols.play_button.index:
+                            self.draw_game_play_button(game, cols.play_button.name[0])
+                        case cols.copy_link.index:
+                            self.draw_game_copy_link_button(game, cols.copy_link.name[0])
+                        case cols.open_thread.index:
+                            self.draw_game_open_thread_button(game, cols.open_thread.name[0])
                         case cols.name.index:
                             if globals.settings.show_remove_btn:
                                 self.draw_game_remove_button(game, icons.trash_can_outline)
@@ -3756,6 +4210,10 @@ class MainGUI():
                                 self.draw_game_unknown_tags_icon(game)
                                 imgui.same_line()
                             self.draw_game_name_text(game)
+# FC: Draw status icon as first icon after name if not Normal
+                            if cols.status.enabled and game.status is not Status.Normal:
+                                imgui.same_line()
+                                self.draw_status_widget(game.status)
                             if game.notes:
                                 imgui.same_line()
                                 imgui.text_colored(icons.draw_pen, 0.85, 0.20, 0.85)
@@ -3763,9 +4221,6 @@ class MainGUI():
                             if game.labels:
                                 imgui.same_line()
                                 self.draw_game_labels_widget(game, wrap=False, small=True, align=True)
-                            if cols.status.enabled and game.status is not Status.Normal:
-                                imgui.same_line()
-                                self.draw_status_widget(game.status)
                             if cols.version.enabled or cols.finished_version.enabled or cols.installed_version.enabled:
                                 imgui.same_line()
                                 versions = []
@@ -3786,52 +4241,47 @@ class MainGUI():
                                     if cols.installed_version.enabled and game.installed:
                                         versions.append(f"{cols.installed_version.name[0]} {game.installed}")
                                 imgui.text_disabled("  |  ".join(versions))
+                        case cols.status_standalone.index:
+                            self.draw_status_widget(game.status)
+# FC: Last date the status changed
+                        case cols.last_status_change.index:
+                            imgui.push_font(imgui.fonts.mono)
+                            imgui.text(game.last_status_change.display or "Never")
+                            imgui.pop_font()
                         case cols.developer.index:
+# FC: Call webpage showing all games by this developer
+                            if not game.custom:
+                                self.draw_game_open_devgames_button(game, f"{icons.open_in_new}")
+                                imgui.same_line()
                             imgui.text(game.developer or "Unknown")
-                        case cols.playtime.index:
-                            imgui.push_font(imgui.fonts.mono)
-                            imgui.text(game.playtime_display or "None")
-                            imgui.pop_font()
-                        case cols.last_updated.index:
-                            imgui.push_font(imgui.fonts.mono)
-                            imgui.text(game.last_updated.display or "Unknown")
-                            imgui.pop_font()
-                        case cols.last_launched.index:
-                            imgui.push_font(imgui.fonts.mono)
-                            imgui.text(game.last_launched.display or "Never")
-                            imgui.pop_font()
-                        case cols.added_on.index:
-                            imgui.push_font(imgui.fonts.mono)
-                            imgui.text(game.added_on.display)
-                            imgui.pop_font()
-                        case cols.finished.index:
-                            self.draw_game_finished_checkbox(game)
-                        case cols.installed.index:
-                            self.draw_game_installed_checkbox(game)
-                        case cols.rating.index:
-                            self.draw_game_rating_widget(game)
                         case cols.notes.index:
                             if notes_width is None:
                                 notes_width = imgui.get_content_region_available_width() - 2 * imgui.style.item_spacing.x
                             self.draw_game_notes_widget(game, multiline=False, width=notes_width)
-                        case cols.open_thread.index:
-                            self.draw_game_open_thread_button(game, cols.open_thread.name[0])
-                        case cols.copy_link.index:
-                            self.draw_game_copy_link_button(game, cols.copy_link.name[0])
-                        case cols.open_folder.index:
-                            self.draw_game_open_folder_button(game, cols.open_folder.name[0])
-                        case cols.status_standalone.index:
-                            self.draw_status_widget(game.status)
+# FC: Draw rating before forum score
+                        case cols.rating.index:
+                            self.draw_game_rating_widget(game)
                         case cols.score.index:
                             with imgui.begin_group():
-                                imgui.text(f"{game.score:.1f}")
+# FC: Display forum score in monospaced font
+                                imgui.push_font(imgui.fonts.mono)
+                                if globals.settings.weighted_score:
+                                    imgui.text(f"{utils.bayesian_average(game.score, game.votes):.2f}")
+                                else:
+                                    imgui.text(f"{game.score:.1f}")
                                 imgui.same_line()
                                 imgui.text_disabled(f"({game.votes})")
-                            self.draw_hover_text(f"Weighted: {utils.bayesian_average(game.score, game.votes):.2f}", text=None)
+                                imgui.pop_font()
+                            if globals.settings.weighted_score:                            
+                                self.draw_hover_text(f"Forum score: {game.score:.1f}", text=None)
+                            else:
+                                self.draw_hover_text(f"Bayesian average: {utils.bayesian_average(game.score, game.votes):.2f}", text=None)
                 # Row hitbox
                 imgui.same_line()
                 imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - imgui.style.frame_padding.y)
-                if game.selected:
+# FC: Sticky Highlight tracker
+                highlight_tracker = (self.info_popup_game_id == game.id)
+                if game.selected or highlight_tracker:
                     imgui.push_alpha(0.5)
                     imgui.get_window_draw_list().add_rect_filled(
                         0, pos_y := imgui.get_cursor_screen_pos().y + 1,
@@ -3845,6 +4295,9 @@ class MainGUI():
                 self.handle_game_hitbox_events(game, drag_drop=True)
 
             imgui.end_table()
+# FC: Slideshow
+        if globals.settings.slideshow_start_playing:
+            self.draw_slideshow()
 
     def tick_list_columns(self):
         # Hack: get sort and column specs for list mode in grid and kanban mode
@@ -3901,7 +4354,7 @@ class MainGUI():
             imgui.style.item_spacing.x * action_items +      # Spacing * 6 action items
             imgui.style.frame_padding.x * 2 * buttons +      # Button padding * 2 sides * 4 buttons
             imgui.style.item_inner_spacing.x * checkboxes +  # Checkbox to label spacing * 2 checkboxes
-            frame_height * checkboxes +          # (Checkbox height = width) * 2 checkboxes
+            frame_height * checkboxes +                      # (Checkbox height = width) * 2 checkboxes
             imgui.calc_text_size(                            # Text
                 cols.play_button.name[0] * cols.play_button.enabled +
                 cols.open_folder.name[0] * cols.open_folder.enabled +
@@ -3946,7 +4399,7 @@ class MainGUI():
         config = (side_indent, action_items, cluster_pad, bg_col, frame_height)
         return min_cell_width, min_expand_width, config
 
-    def draw_game_cell(self, game: Game, drag_drop: bool, draw_list, cell_width: float, expand: bool, img_height: float, config: tuple):
+    def draw_game_cell(self, game: Game, drag_drop: bool, draw_list, cell_width: float, expand: bool, img_height: float, config: tuple, highlight_tracker: bool = False, carousel_idx: int = None):
         (side_indent, action_items, cluster_pad, bg_col, frame_height) = config
         draw_list.channels_split(2)
         draw_list.channels_set_current(1)
@@ -3974,9 +4427,10 @@ class MainGUI():
                 imgui.set_cursor_pos((pos.x + imgui.style.item_spacing.x, pos.y + imgui.style.item_spacing.y))
                 self.draw_game_remove_button(game, icons.trash_can_outline)
             # Type
-            if cols.type.enabled:
-                imgui.set_cursor_pos((pos.x + imgui.style.item_spacing.x, pos.y + img_height + imgui.style.item_spacing.y - frame_height / 2))
-                self.draw_type_widget(game.type, wide=False)
+# FC: Always show type in kanban and grid view
+#            if cols.type.enabled:
+            imgui.set_cursor_pos((pos.x + imgui.style.item_spacing.x, pos.y + img_height + imgui.style.item_spacing.y - frame_height / 2))
+            self.draw_type_widget(game.type, wide=False)
             # Version
             if cols.version.enabled:
                 cut = len(game.version)
@@ -4021,17 +4475,18 @@ class MainGUI():
                         imgui.same_line()
                     self.draw_game_copy_link_button(game, f"{cols.copy_link.name[0]}{' Link' if expand else ''}")
                     did_newline = True
-                # Finished
-                if cols.finished.enabled:
-                    if did_newline:
-                        imgui.same_line()
-                    self.draw_game_finished_checkbox(game, cols.finished.name[0])
-                    did_newline = True
+# FC: Show Installed and Finished in logical order
                 # Installed
                 if cols.installed.enabled:
                     if did_newline:
                         imgui.same_line()
                     self.draw_game_installed_checkbox(game, cols.installed.name[0])
+                    did_newline = True
+                # Finished
+                if cols.finished.enabled:
+                    if did_newline:
+                        imgui.same_line()
+                    self.draw_game_finished_checkbox(game, cols.finished.name[0])
                     did_newline = True
             else:
                 # Skip if outside view
@@ -4050,13 +4505,14 @@ class MainGUI():
             self.draw_game_unknown_tags_icon(game)
             imgui.same_line()
             cluster = True
+# FC: Draw status icon as first if not Normal
+        if (cols.status.enabled or cols.status_standalone.enabled) and game.status is not Status.Normal:
+            self.draw_status_widget(game.status)
+            imgui.same_line()
+            cluster = True
         if game.notes:
             imgui.text_colored(icons.draw_pen, 0.85, 0.20, 0.85)
             self.draw_hover_text(game.notes, text=None)
-            imgui.same_line()
-            cluster = True
-        if (cols.status.enabled or cols.status_standalone.enabled) and game.status is not Status.Normal:
-            self.draw_status_widget(game.status)
             imgui.same_line()
             cluster = True
         if game.labels:
@@ -4067,24 +4523,26 @@ class MainGUI():
             nonlocal cluster
             if imgui.get_cursor_pos_x() + imgui.style.item_spacing.x + imgui.calc_text_size(name[0] + text).x > wrap_pos:
                 imgui.dummy(0, 0)
-            imgui.text_disabled(name[0])
-            if imgui.is_item_hovered():
-                imgui.set_tooltip(name[2:])
-            imgui.same_line()
-            imgui.text(text)
+            if name[2:] == "Developer" and not game.custom:
+                self.draw_game_open_devgames_icon(text)
+            else:
+                imgui.text_disabled(name[0])
+                imgui.same_line()
+                imgui.text(text)
             imgui.same_line(spacing=cluster_pad)
             cluster = True
         if cols.score.enabled:
             _cluster_text(cols.score.name, f"{game.score:.1f} ({game.votes})")
             self.draw_hover_text(f"Weighted: {utils.bayesian_average(game.score, game.votes):.2f}", text=None)
-        if cols.playtime.enabled and game.playtime_display:
-            _cluster_text(cols.playtime.name, game.playtime_display)
+# FC: Show dates in logical order: Added/Updated/Played
+        if cols.added_on.enabled:
+            _cluster_text(cols.added_on.name, game.added_on.display)
         if cols.last_updated.enabled:
             _cluster_text(cols.last_updated.name, game.last_updated.display or "Unknown")
         if cols.last_launched.enabled:
             _cluster_text(cols.last_launched.name, game.last_launched.display or "Never")
-        if cols.added_on.enabled:
-            _cluster_text(cols.added_on.name, game.added_on.display)
+        if cols.playtime.enabled and game.playtime_display:
+            _cluster_text(cols.playtime.name, game.playtime_display)
         if cols.rating.enabled:
             if imgui.get_cursor_pos_x() + imgui.calc_text_size(icons.star * 5).x > wrap_pos:
                 imgui.dummy(0, 0)
@@ -4129,10 +4587,10 @@ class MainGUI():
         if imgui.is_rect_visible(cell_width, cell_height):
             # Skip if outside view
             imgui.invisible_button(f"###{game.id}_hitbox", cell_width, cell_height)
-            self.handle_game_hitbox_events(game, drag_drop=drag_drop)
+            self.handle_game_hitbox_events(game, drag_drop=drag_drop, carousel_idx=carousel_idx)
             rect_min = imgui.get_item_rect_min()
             rect_max = imgui.get_item_rect_max()
-            if game.selected:
+            if game.selected or highlight_tracker:
                 imgui.push_alpha(0.5)
                 draw_list.add_rect_filled(
                     *rect_min, *rect_max, imgui.get_color_u32_rgba(*globals.settings.style_accent),
@@ -4173,10 +4631,15 @@ class MainGUI():
             for id in self.show_games_ids[self.current_tab]:
                 game = globals.games[id]
                 imgui.table_next_column()
-                self.draw_game_cell(game, True, draw_list, cell_width, expand, img_height, cell_config)
+# FC: Sticky Highlight tracker
+                highlight_tracker = (self.info_popup_game_id == game.id)
+                self.draw_game_cell(game, True, draw_list, cell_width, expand, img_height, cell_config, highlight_tracker)
 
             imgui.end_table()
         imgui.pop_style_var()
+# FC: Slideshow
+        if globals.settings.slideshow_start_playing:
+            self.draw_slideshow()
 
     def draw_games_kanban(self):
         # Configure table
@@ -4186,7 +4649,20 @@ class MainGUI():
         imgui.push_style_var(imgui.STYLE_CELL_PADDING, (padding, padding))
         img_height = cell_width / globals.settings.cell_image_ratio
         cells_per_column = 1
-        column_count = len(Label.instances) + 1
+# FC: We're only going to draw columns for labels actually having games in the current tab
+        # so we need to know the game id's here already.
+        # and to not do extra work, save label and counts in a temporary list
+        labels_used = []
+        tab_games_ids = self.show_games_ids[self.current_tab]
+        for label in Label.instances:
+            count = 0
+            for id in tab_games_ids:
+                if label in globals.games[id].labels:
+                    count += 1
+            if count > 0:
+                labels_used.append((label, count))
+#        column_count = len(Label.instances) + 1
+        column_count = len(labels_used) + 1
         avail = imgui.get_content_region_available_width()
         table_width = lambda: (padding * 2 + (cell_width + imgui.style.item_spacing.x) * cells_per_column + imgui.style.scrollbar_size) * column_count
         while table_width() < avail:
@@ -4201,22 +4677,30 @@ class MainGUI():
             outer_size_height=-imgui.get_frame_height_with_spacing()  # Bottombar
         ):
             # Setup columns
-            not_labelled = len(Label.instances)
-            for label in Label.instances:
-                imgui.table_setup_column(label.name, imgui.TABLE_COLUMN_WIDTH_STRETCH)
+#            not_labelled = len(Label.instances)
+            not_labelled = len(labels_used)
+#            for label in Label.instances:
+#                imgui.table_setup_column(label.name, imgui.TABLE_COLUMN_WIDTH_STRETCH)
+            for _, label in enumerate(labels_used):
+                imgui.table_setup_column(label[0].name, imgui.TABLE_COLUMN_WIDTH_STRETCH)
             imgui.table_setup_column("Not Labelled", imgui.TABLE_COLUMN_WIDTH_STRETCH)
-            tab_games_ids = self.show_games_ids[self.current_tab]
+# FC: Moved higher up since we need to know the IDs to check for existing labels
+#            tab_games_ids = self.show_games_ids[self.current_tab]
 
             # Column headers
             imgui.table_setup_scroll_freeze(0, 1)  # Sticky column headers
             imgui.table_next_row(imgui.TABLE_ROW_HEADERS)
-            for label_i, label in enumerate(Label.instances):
+# FC: Why do it twice?
+#            for label_i, label in enumerate(Label.instances):
+#                imgui.table_set_column_index(label_i)
+#                count = 0
+#                for id in tab_games_ids:
+#                    if label in globals.games[id].labels:
+#                        count += 1
+#                imgui.table_header(f"{label.name} ({count})")
+            for label_i, label in enumerate(labels_used):
                 imgui.table_set_column_index(label_i)
-                count = 0
-                for id in tab_games_ids:
-                    if label in globals.games[id].labels:
-                        count += 1
-                imgui.table_header(f"{label.name} ({count})")
+                imgui.table_header(f"{label[0].name} ({label[1]})")
             imgui.table_set_column_index(not_labelled)
             count = 0
             for id in tab_games_ids:
@@ -4225,7 +4709,13 @@ class MainGUI():
             imgui.table_header(f"Not Labelled ({count})")
 
             # Loop cells
-            for label_i, label in (*enumerate(Label.instances), (not_labelled, None)):
+# FC: Sticky Highlight tracker
+            # carousel_idx tracks the position in the kanban-ordered carousel list so we
+            # can highlight each occurence if a game has more than one label.
+            carousel_idx = 0
+            info_popup_idx = None
+#            for label_i, label in (*enumerate(Label.instances), (not_labelled, None)):
+            for label_i, label in (*enumerate(labels_used), (not_labelled, None)):
                 imgui.table_next_column()
                 imgui.begin_child(f"###game_kanban_{label_i}", height=-padding)
                 draw_list = imgui.get_window_draw_list()
@@ -4236,9 +4726,14 @@ class MainGUI():
                     if label_i == not_labelled:
                         if game.labels:
                             continue
-                    elif label not in game.labels:
+                    elif label[0] not in game.labels:
                         continue
-                    self.draw_game_cell(game, False, draw_list, cell_width, False, img_height, cell_config)
+# FC: Sticky Highlight tracker
+                    if (self.info_popup_game_id == game.id and info_popup_idx != carousel_idx):
+                        info_popup_idx = carousel_idx
+                    highlight_tracker = (self.info_popup_game_id == game.id and info_popup_idx == carousel_idx)
+                    self.draw_game_cell(game, False, draw_list, cell_width, False, img_height, cell_config, highlight_tracker, carousel_idx)
+                    carousel_idx += 1
                     wrap -= 1
                     if wrap:
                         imgui.same_line()
@@ -4251,6 +4746,9 @@ class MainGUI():
 
             imgui.end_table()
         imgui.pop_style_var()
+# FC: Slideshow
+        if globals.settings.slideshow_start_playing:
+            self.draw_slideshow()
 
     def draw_bottombar(self):
         new_display_mode = None
@@ -4268,6 +4766,12 @@ class MainGUI():
         if new_display_mode is not None:
             globals.settings.display_mode = new_display_mode
             async_thread.run(db.update_settings("display_mode"))
+
+# FC: Set scroll multiplier to 2.5 in kanban and label-column view (scrolls roughly a full cell up/down)
+            globals.settings.scroll_amount = 1.0
+            if new_display_mode != 1:
+                globals.settings.scroll_amount = 2.5
+            async_thread.run(db.update_settings("scroll_amount"))
 
         if self.add_box_valid:
             imgui.set_next_item_width(-(imgui.calc_text_size("Add!").x + 2 * imgui.style.frame_padding.x) - imgui.style.item_spacing.x)
@@ -4443,6 +4947,10 @@ class MainGUI():
                     utils.start_refresh_task(api.refresh(full=True))
                 if not globals.settings.refresh_completed_games or not globals.settings.refresh_archived_games:
                     imgui.separator()
+                    if imgui.selectable(f"{icons.reload_alert} Full Refresh (current tab)", False)[0]:
+                        tab_games = self.show_games_ids[self.current_tab]
+                        games = list(filter(lambda g: g.id in tab_games, globals.games.values()))
+                        utils.start_refresh_task(api.refresh(*games, full=True, notifs=False, force_archived=True, force_completed=True), reset_bg_timers=False, notify_new_games=False)
                     if not globals.settings.refresh_archived_games:
                         if imgui.selectable(f"{icons.reload_alert} Full Refresh (incl. archived)", False)[0]:
                             utils.start_refresh_task(api.refresh(full=True, force_archived=True))
@@ -4486,6 +4994,8 @@ class MainGUI():
         imgui.begin_child("Settings")
 
         if draw_settings_section("Filter", collapsible=False):
+#            elapsed = self.idle_timer.elapsed() if not globals.settings.slideshow_start_playing else 0
+#            draw_settings_label(f'Elapsed idle time: {elapsed:3.0f} seconds')
             draw_settings_label(f"Total games count: {len(globals.games)}")
             imgui.text("")
             imgui.spacing()
@@ -4691,6 +5201,8 @@ class MainGUI():
                                     async_thread.run(db.update_settings("browser_custom_executable"))
                             utils.push_popup(filepicker.FilePicker(
                                 title="Select or drop browser executable",
+# FC: FilePicker Highlight
+                                picker_type=filepicker.PickerType.Execs,
                                 start_dir=set.browser_custom_executable,
                                 callback=callback
                             ).tick)
@@ -4820,7 +5332,7 @@ class MainGUI():
             draw_settings_label(
                 "Cell ratio:",
                 "The aspect ratio to use for images in grid and kanban view. This is width:height, AKA how many times wider the image "
-                "is compared to its height. Default is 3:1."
+                "is compared to its height. Minimum value is 0.5:1 and maximum value is 5:1. Default is 3:1 (:1 is implied)."
             )
             changed, value = imgui.drag_float("###cell_image_ratio", set.cell_image_ratio, change_speed=0.02, min_value=0.5, max_value=5, format="%.1f:1")
             set.cell_image_ratio = min(max(value, 0.5), 5)
@@ -5000,6 +5512,35 @@ class MainGUI():
                 "best together with Tex compress, so image load times are very short and completely unnoticeable due to preloading."
             )
             draw_settings_checkbox("preload_nearby_images")
+
+# FC: Slideshow
+            draw_settings_label(
+                "Enable slideshow:",
+                "Creates a slideshow in-window of game banners in the current tab. Press ESC to stop.\nPlease be aware that this will use a fair amount of CPU cyles."
+            )
+            draw_settings_checkbox("slideshow_start_playing")
+
+            draw_settings_label(
+                "Cycle only current tab:",
+                "If unchecked the slideshow will cycle through all game banners,\nif checked only game banners in the current tab will be shown."
+            )
+            draw_settings_checkbox("slideshow_tab_only")
+
+            draw_settings_label(
+                "Cycle in random order:",
+                "If checked game banners will be selected randomly,\nif unchecked game banners will be selected in one of two ways:\n- if cycling through only the active tab: in sort order.\n- if cycling through all tabs: in game id order"
+            )
+            draw_settings_checkbox("slideshow_random_order")
+
+            draw_settings_label(
+                "Interval:",
+                "Delay in seconds before showing the next game banner.\nAllowed range is from 1-600sec (1 second to 10 minutes).\nDefault is 5000 ms (5 seconds)."
+            )
+            changed, value = imgui.drag_int("###slideshow_interval", set.slideshow_interval, 1.0, 1, 600, "%d sec")
+            set.slideshow_interval = min(max(value, 1), 600)
+            if changed:
+                async_thread.run(db.update_settings("slideshow_interval"))
+
 
             imgui.end_table()
             imgui.spacing()
@@ -5197,7 +5738,8 @@ class MainGUI():
                         async_thread.run(db.delete_label(label))
                 buttons_num = 3 + set.show_remove_btn
                 imgui.set_next_item_width(width - frame_height * buttons_num - imgui.style.cell_padding.x * buttons_num - imgui.style.scrollbar_size * (imgui.get_scroll_max_y() > 0.0))
-                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name)
+# FC: Only add label to db when ENTER pressed
+                changed, value = imgui.input_text_with_hint(f"###label_name_{label.id}", "Label name", label.name, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
                 setter_extra = lambda _=None: async_thread.run(db.update_label(label, "name"))
                 if changed:
                     label.name = value
@@ -5220,6 +5762,7 @@ class MainGUI():
                 async_thread.run(db.update_label_positions())
 
             draw_settings_label("New label:")
+# FC: Add warning if max allowed labels is reached (due to IMGUI_TABLE_MAX_COLUMNS limit)
             if imgui.button("Add", width=right_width):
                 if len(Label.instances) == 63:
                     utils.push_popup(
@@ -5281,6 +5824,8 @@ class MainGUI():
                     buttons={
                         f"{icons.check} Ok": lambda: utils.push_popup(filepicker.FilePicker(
                                                          title="Select or drop bookmark file",
+# FC: FilePicker Highlight
+                                                         picker_type=filepicker.PickerType.Bookmarks,
                                                          callback=callback
                                                      ).tick),
                         f"{icons.cancel} Cancel": None
@@ -5864,14 +6409,17 @@ class MainGUI():
             draw_settings_color("style_text_dim")
 
             draw_settings_label("Defaults:")
+# FC: Attempt to save current styles to .toml file
+            if imgui.button("Save", width=right_width):
+                globals.gui.save_styles_to_toml()
             if imgui.button("Restore", width=right_width):
-                set.style_corner_radius = DefaultStyle.corner_radius
-                set.style_accent        = colors.hex_to_rgba_0_1(DefaultStyle.accent)
-                set.style_alt_bg        = colors.hex_to_rgba_0_1(DefaultStyle.alt_bg)
-                set.style_bg            = colors.hex_to_rgba_0_1(DefaultStyle.bg)
-                set.style_border        = colors.hex_to_rgba_0_1(DefaultStyle.border)
-                set.style_text          = colors.hex_to_rgba_0_1(DefaultStyle.text)
-                set.style_text_dim      = colors.hex_to_rgba_0_1(DefaultStyle.text_dim)
+                set.style_corner_radius        = DefaultStyle.corner_radius
+                set.style_accent               = colors.hex_to_rgba_0_1(DefaultStyle.accent)
+                set.style_alt_bg               = colors.hex_to_rgba_0_1(DefaultStyle.alt_bg)
+                set.style_bg                   = colors.hex_to_rgba_0_1(DefaultStyle.bg)
+                set.style_border               = colors.hex_to_rgba_0_1(DefaultStyle.border)
+                set.style_text                 = colors.hex_to_rgba_0_1(DefaultStyle.text)
+                set.style_text_dim             = colors.hex_to_rgba_0_1(DefaultStyle.text_dim)
                 self.refresh_styles()
                 async_thread.run(db.update_settings(
                     "style_corner_radius",
@@ -6054,6 +6602,8 @@ class TrayIcon(QtWidgets.QSystemTrayIcon):
 
         self.watermark = QtGui.QAction(f"F95Checker {globals.version_name}")
         self.watermark.triggered.connect(lambda *_: self.main_gui.show())
+# FC: Tray Icon tooltip
+        self.setToolTip("F95Checker-Test")
 
         self.next_refresh = QtGui.QAction("Next Refresh: N/A")
         self.next_refresh.setEnabled(False)

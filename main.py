@@ -44,7 +44,7 @@ def main():
 def lock_singleton():
     from external import singleton
     try:
-        singleton.lock("F95Checker")
+        singleton.lock("F95Checker-Test")
         locked = True
     except RuntimeError:
         locked = False
@@ -52,7 +52,7 @@ def lock_singleton():
         yield locked
     finally:
         if locked:
-            singleton.release("F95Checker")
+            singleton.release("F95Checker-Test")
         else:
             try:
                 from urllib import request

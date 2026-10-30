@@ -943,6 +943,11 @@ class Settings:
     scroll_smooth_speed         : float
     select_executable_after_add : bool
     show_remove_btn             : bool
+# FC: Cycle images
+    slideshow_start_playing     : bool
+    slideshow_tab_only          : bool
+    slideshow_interval          : int
+    slideshow_random_order      : bool
     software_webview            : bool
     start_in_background         : bool
     start_refresh               : bool
@@ -989,6 +994,8 @@ class Game:
     last_full_check    : int
     last_check_version : str
     last_launched      : Datestamp
+# FC: Last date the status changed
+    last_status_change : Datestamp
     playtime           : float
     score              : float
     votes              : int
@@ -1287,6 +1294,8 @@ class Game:
             "last_full_check",
             "last_check_version",
             "last_launched",
+# FC: Last date the status changed
+            "last_status_change",
             "playtime",
             "score",
             "votes",

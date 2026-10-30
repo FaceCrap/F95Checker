@@ -261,6 +261,13 @@ async def connect():
             "scroll_smooth_speed":         f'REAL    DEFAULT 8.0',
             "select_executable_after_add": f'INTEGER DEFAULT {int(False)}',
             "show_remove_btn":             f'INTEGER DEFAULT {int(False)}',
+# FC: Cycle images
+            "slideshow_start_playing":     f'INTEGER DEFAULT {int(False)}',
+            "slideshow_random_order":      f'INTEGER DEFAULT {int(False)}',
+            "slideshow_tab_only":          f'INTEGER DEFAULT {int(False)}',
+            "slideshow_transition_dur":    f'REAL    DEFAULT 0.5',           # currently unused
+            "slideshow_interval":          f'INTEGER DEFAULT 5',
+            "slideshow_idle_seconds":      f'INTEGER DEFAULT 900',           # currently unused
             "software_webview":            f'INTEGER DEFAULT {int(False)}',
             "start_in_background":         f'INTEGER DEFAULT {int(False)}',
             "start_refresh":               f'INTEGER DEFAULT {int(False)}',
@@ -319,11 +326,14 @@ async def connect():
             "last_check_version":          f'TEXT    DEFAULT ""',
             "last_launched":               f'INTEGER DEFAULT 0',
             "playtime":                    f'REAL    DEFAULT 0',
+# FC: Last date the status changed
+            "last_status_change":          f'INTEGER DEFAULT 0',
             "score":                       f'REAL    DEFAULT 0',
             "votes":                       f'INTEGER DEFAULT 0',
             "rating":                      f'INTEGER DEFAULT 0',
-            "finished":                    f'TEXT    DEFAULT ""',
+# FC: Swap order finished, installed
             "installed":                   f'TEXT    DEFAULT ""',
+            "finished":                    f'TEXT    DEFAULT ""',
             "updated":                     f'INTEGER DEFAULT NULL',
             "archived":                    f'INTEGER DEFAULT {int(False)}',
             "executables":                 f'TEXT    DEFAULT "[]"',
@@ -375,6 +385,7 @@ async def connect():
             "icon":                        f'TEXT    DEFAULT "{Tab.base_icon()}"',
             "color":                       f'TEXT    DEFAULT NULL',
             "position":                    f'INTEGER DEFAULT 0',
+            "pinned_games":                f'TEXT    DEFAULT "[]"',
         }
     )
     await create_table(
@@ -482,10 +493,11 @@ async def load_games(id: int = None):
 
 
 async def load():
+# FC: Sort case insensitive by name, use lower() because NOCASE don't work with SQLite
     cursor = await connection.execute("""
         SELECT *
         FROM labels
-        ORDER BY id
+        ORDER BY lower(name)
     """)
     for label in await cursor.fetchall():
         Label.add(row_to_cls(label, Label))

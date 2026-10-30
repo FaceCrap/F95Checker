@@ -8,6 +8,7 @@ import psutil
 import re
 import shlex
 import stat
+import string
 import subprocess
 import tempfile
 import time
@@ -91,6 +92,10 @@ def update_start_with_system(toggle: bool):
 
 def _fuzzy_match_subdir(where: pathlib.Path, match: str, best_partial_match: bool):
     clean_dir = utils.clean_str(match)
+# FC: Seems this might nolonger be needed anymore
+#    trailer = tuple("-, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0")
+#    while clean_dir.endswith(trailer):
+#        clean_dir = clean_dir.strip(clean_dir[len(clean_dir)-1])
     if (where / clean_dir).is_dir():
         where /= clean_dir
     else:
@@ -169,6 +174,8 @@ def add_game_exe(game: Game, callback: typing.Callable = None):
     if game.type.category in (Category.Animations, Category.Comics):
         picker = filepicker.DirPicker(
             title=f"Select or drop executable for {game.name}",
+# FC: FilePicker Highlight
+            picker_type=filepicker.PickerType.Media,
             start_dir=start_dir,
             callback=select_callback,
             buttons=[use_uri, use_file]
@@ -176,6 +183,8 @@ def add_game_exe(game: Game, callback: typing.Callable = None):
     else:
         picker = filepicker.FilePicker(
             title=f"Select or drop executable for {game.name}",
+# FC: FilePicker Highlight
+            picker_type=filepicker.PickerType.Execs,
             start_dir=start_dir,
             callback=select_callback,
             buttons=[use_uri, use_dir]
@@ -673,7 +682,7 @@ def redirect_masked_link(masked_url: str, copy=False):
     if not copy and globals.settings.browser.integrated:
         size = (1269, 969)
     else:
-        size = (520, 480)
+        size = (320, 200)
     async def _unmask_and_copy():
         if not await api.assert_login():
             return
@@ -702,7 +711,7 @@ def redirect_xpath_link(thread_url: str, xpath_expr: str, copy=False):
     if not copy and globals.settings.browser.integrated:
         size = (1269, 969)
     else:
-        size = (520, 480)
+        size = (320, 200)
     async def _retrieve_and_copy():
         if not await api.assert_login():
             return
@@ -725,7 +734,8 @@ def redirect_xpath_link(thread_url: str, xpath_expr: str, copy=False):
 
 
 def convert_f95zone_to_custom(game: Game):
-    async_thread.wait(db.update_game_id(game, utils.custom_id()))
+# FC: Keep F95 Thread ID when converting to Custom Game
+#    async_thread.wait(db.update_game_id(game, utils.custom_id()))
     game.custom = True
     game.downloads = ()
 
@@ -747,7 +757,8 @@ def convert_custom_to_f95zone(game: Game):
             MsgBox.warn
         )
         return
-    async_thread.wait(db.update_game_id(game, new_id))
+# FC: Kept F95 Thread ID when converted to Custom Game
+#    async_thread.wait(db.update_game_id(game, new_id))
     game.custom = False
     game.status = Status.Unchecked
 
@@ -785,6 +796,8 @@ async def add_games(*threads: list[ThreadMatch | SearchResult], force_summary=Fa
         done = []
         dupes = []
         added = []
+# FC: Holds added games to refresh after adding
+        games = []
         for thread in threads:
             if thread.id in done:
                 continue
@@ -796,21 +809,29 @@ async def add_games(*threads: list[ThreadMatch | SearchResult], force_summary=Fa
             await db.load_games(thread.id)
             game = globals.games[thread.id]
             added.append(game.name)
+# FC: Add game to list for later refresh after adding them
+            games.append(game)
             if globals.settings.mark_installed_after_add:
                 game.installed = game.version
             if globals.settings.select_executable_after_add:
                 add_game_exe(game)
         dupe_count = len(dupes)
         added_count = len(added)
+# FC: Auto-Refresh after adding new game(s)
+        if len(games) > 0:
+            await api.refresh(*games, full=True, notifs=False)
         if open_duplicate and dupe_count == 1 and added_count == 0:
             utils.push_popup(globals.gui.draw_game_info_popup, globals.games[threads[0].id], None)
         elif force_summary or dupe_count > 0 or added_count > 1:
             utils.push_popup(
-                msgbox.msgbox, f"{'Duplicate' if dupe_count > 0 else 'Added'} games",
+                msgbox.msgbox, ("New " if added_count > 0 else "") +
+                    (f"and " if added_count > 0 and dupe_count > 0 else "") +
+                    ("Duplicate " if dupe_count > 0 else "") +
+                    "game" + ("s" if added_count > 1 or dupe_count > 1 else ""),
                 (
-                    (f"{added_count} new game{' has' if added_count == 1 else 's have'} been added to your library.\n"
-                    "Make sure to refresh to grab all the game details.")
-                    if added_count > 0 else ""
+# FC: Remove the hint to refresh since that now happens automatically 
+                   (f"{added_count} new game{' has' if added_count == 1 else 's have'} been added to your library.")
+                   if added_count > 0 else ""
                 ) +
                 ("\n\n" if dupe_count > 0 and added_count > 0 else "") +
                 (
@@ -818,7 +839,8 @@ async def add_games(*threads: list[ThreadMatch | SearchResult], force_summary=Fa
                     if dupe_count > 0 else ""
                 ),
                 MsgBox.warn if dupe_count > 0 else MsgBox.info,
-                more=(("Added:\n - " + "\n - ".join(added)) if added_count > 0 else "") +
+# FC: Replace threadnames with actual game names
+                more=(("Added:\n - " + "\n - ".join(game.name for game in games)) if added_count > 0 else "") +
                      ("\n\n" if dupe_count > 0 and added_count > 0 else "") +
                      (("Duplicates:\n - " + "\n - ".join(dupes)) if dupe_count > 0 else "")
             )

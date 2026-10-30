@@ -1192,6 +1192,8 @@ async def full_check(game: Game, last_changed: int, updates: dict[int, OldGame],
                     if changed_name:
                         game.add_timeline_event(TimelineEventType.ChangedName, old_name, game.name)
                     if changed_status:
+# FC: Last date the status changed
+                        game.last_status_change = int(time.time())
                         game.add_timeline_event(TimelineEventType.ChangedStatus, old_status.name, game.status.name)
                     if changed_version:
                         game.add_timeline_event(TimelineEventType.ChangedVersion, old_version, game.version)
@@ -1835,6 +1837,9 @@ async def download_file(download: FileDownload):
                 archive_format,
             )
 
+# FC: Also make it delete the extracted archive
+            download.path.unlink(missing_ok=True)
+
     except Exception:
         download.error = error.text()
         download.traceback = error.traceback()
@@ -1883,8 +1888,11 @@ async def ddl_file_list(thread_id: int, retry=False):
                 date=file["date"],
                 sha1=file["hash"],
             ))
+# FC: Remove BB-Code crud from section names
         if match := re.match(r"\[SPOILER=(.+)\]", section):
             section = match.group(1)
+        section = section.replace("\"","")
+        section = re.sub(r"\[.*?\]", r"", section)
         results["files"][section] = parsed
     return results
 
@@ -1979,6 +1987,8 @@ def open_ddl_popup(game: Game):
                         imgui.push_disabled()
                     if imgui.button(icons.download_multiple):
                         async def _download_ddl_link(session_id: str, file: DdlFile):
+# FC: Replace underscores with dashes
+                            file.filename = file.filename.replace("_","-")
                             download = FileDownload(file.filename, total=file.size, checksum=("sha1", file.sha1))
                             downloads_dir = globals.settings.downloads_dir.get(globals.os)
                             if downloads_dir:

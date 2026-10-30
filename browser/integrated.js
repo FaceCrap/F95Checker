@@ -75,7 +75,7 @@ var update = async () => {
                 font: normal normal normal 24px/1 "MDI Custom";
                 font-size: inherit;
                 text-rendering: auto;
-                line-height: inherit;
+                /*line-height: inherit;*/
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
             }
@@ -101,6 +101,8 @@ var update = async () => {
         const game = games.find(g => g.id === gameId);
         icon.classList.add('mdi');
         icon.style.setProperty('--mdi-i', `'${game.icon}'`);
+        icon.style.margin = '0';
+        icon.style.padding = '0';
         let tooltiptext = 'This game is present in your F95Checker library!';
         if (game.notes) {
             tooltiptext += `\n\nNOTES: ${game.notes}`;
@@ -114,7 +116,7 @@ var update = async () => {
     };
     const createNbsp = () => {
         const span = document.createElement('span');
-        span.style.display = 'inline-block';
+        span.classList.add('label-append');
         span.innerHTML = '&nbsp;';
         return span;
     };
@@ -186,8 +188,8 @@ var update = async () => {
 
             if (!isImage && elem.children.length > 0) {
                 // Search page
-                container.style.fontSize = '1.2em';
-                container.style.verticalAlign = '-2px';
+                container.style.fontSize = '1.75em';
+                container.style.verticalAlign = '-6px';
                 const whitespaces = elem.querySelectorAll('span.label-append');
                 if(whitespaces.length > 0) {
                     const lastWhitespace = whitespaces[whitespaces.length - 1];
@@ -208,8 +210,8 @@ var update = async () => {
                 thumb.insertAdjacentElement('beforebegin', container);
             } else {
                 // Everywhere else
-                container.style.fontSize = '1.2em';
-                container.style.verticalAlign = '-2px';
+                container.style.fontSize = '1.5em';
+                container.style.verticalAlign = '-3px';
                 elem.insertAdjacentElement('beforebegin', container);
                 elem.insertAdjacentElement('beforebegin', createNbsp());
             }
@@ -218,8 +220,9 @@ var update = async () => {
     const addPageIcon = () => {
         const id = extractThreadId(document.location);
         const container = createContainer();
-        container.style.fontSize = '1.3em';
-        container.style.verticalAlign = '-3px';
+        container.style.fontSize = '1.5em';
+        container.style.verticalAlign = '-6px';
+        container.style.margin = '0px';
         const title = document.getElementsByClassName('p-title-value')[0];
         if (title) {
             if (games.map(g => g.id).includes(id)) {
